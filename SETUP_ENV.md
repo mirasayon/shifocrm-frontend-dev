@@ -33,9 +33,12 @@ touch .env
 VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
-# Telegram Bot API (ixtiyoriy)
-VITE_TELEGRAM_API_URL=http://localhost:3001
+# Telegram Bot API (ixtiyoriy) — ShifoCRM bot
+# Production: Railway
+VITE_TELEGRAM_API_URL=https://shifocrmbot-production.up.railway.app
 VITE_TELEGRAM_API_KEY=my-secret-key-12345
+# Development (localhost):
+# VITE_TELEGRAM_API_URL=http://localhost:3001
 
 # Admin / Super Admin (ixtiyoriy — db.json yo'q bo'lsa yoki production da ishlatish uchun)
 # VITE_ADMIN_LOGIN=admin

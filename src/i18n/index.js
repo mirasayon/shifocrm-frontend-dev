@@ -1,6 +1,8 @@
 import { createI18n } from 'vue-i18n'
 import uz from './uz.json'
 import ru from './ru.json'
+import shifoAIUz from './locales/shifoAI-uz.json'
+import shifoAIRu from './locales/shifoAI-ru.json'
 
 // localStorage'dan saqlangan tilni olish
 const savedLocale = localStorage.getItem('locale') || 'uz'
@@ -10,8 +12,8 @@ const i18n = createI18n({
   locale: savedLocale, // default til
   fallbackLocale: 'uz', // fallback til
   messages: {
-    uz,
-    ru,
+    uz: { ...uz, shifoAI: shifoAIUz },
+    ru: { ...ru, shifoAI: shifoAIRu },
   },
   // Global scope'da $t ishlatish uchun
   globalInjection: true,

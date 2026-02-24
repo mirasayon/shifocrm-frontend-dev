@@ -23,8 +23,8 @@
               <SparklesIcon class="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 class="text-base font-semibold text-gray-900">ShifoAI</h2>
-              <p class="text-xs text-gray-500">Tizim yordamchisi</p>
+              <h2 class="text-base font-semibold text-gray-900">{{ t('shifoAI.title') }}</h2>
+              <p class="text-xs text-gray-500">{{ t('shifoAI.subtitle') }}</p>
             </div>
           </div>
           <button
@@ -39,7 +39,7 @@
         <!-- Intro -->
         <div class="px-4 py-3 bg-slate-50 border-b border-gray-100">
           <p class="text-sm text-gray-600">
-            Savolingizni yozing — bemor qo'shish, tashrif, to'lov, ombor, hisobot va boshqa bo'limlar bo'yicha tushuntirib beraman.
+            {{ t('shifoAI.intro') }}
           </p>
         </div>
 
@@ -65,7 +65,7 @@
           <div v-if="thinking" class="flex justify-start">
             <div class="bg-gray-100 text-gray-600 rounded-2xl rounded-bl-md px-4 py-2.5 text-sm flex items-center gap-2">
               <span class="animate-pulse">...</span>
-              <span>Javob yozilmoqda</span>
+              <span>{{ t('shifoAI.thinking') }}</span>
             </div>
           </div>
         </div>
@@ -107,7 +107,8 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { SparklesIcon, XMarkIcon, PaperAirplaneIcon } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -116,88 +117,34 @@ const props = defineProps({
 
 defineEmits(['close'])
 
+const { t } = useI18n()
+
 const messagesRef = ref(null)
 const inputText = ref('')
 const thinking = ref(false)
 const messages = ref([])
 
-const placeholder = 'Savolingizni yozing...'
+const placeholder = computed(() => t('shifoAI.placeholder'))
+const suggestions = computed(() => t('shifoAI.suggestions'))
 
-const suggestions = [
-  'Bemor qanday qo\'shiladi?',
-  'Tashrifni qanday yakunlash?',
-  'Material sarfini qanday kiritaman?',
-  'Hisobotlarda nima ko\'rinadi?',
-  'Qarz qanday yoziladi?'
-]
-
-// ShifoCRM bo'yicha javoblar (kalit so'zlar bo'yicha)
-function getAnswer(question) {
+// Javob kalitini qaytaradi — til t('shifoAI.answers.' + key) orqali tanlanadi (uz/ru)
+function getAnswerKey(question) {
   const q = (question || '').toLowerCase().trim()
-  if (!q) return 'Savolingizni batafsilroq yozing, shunda yordam bera olaman.'
-
-  // Salom / nima qilish
-  if (/salom|hello|yordam|nima qilish|qanday ishlatish/.test(q)) {
-    return 'ShifoAI — ShifoCRM tizimi yordamchisi. Bemorlar, tashriflar, to\'lovlar, ombor, hisobotlar va sozlamalar bo\'yicha savollaringizga javob beraman. Yuqoridagi qisqa savollardan birini tanlang yoki o\'zingiz yozing.'
-  }
-
-  // Bemor
-  if (/bemor|patient|qo\'shish|qanday qo\'shiladi/.test(q)) {
-    return 'Bemor qo\'shish: Bemorlar bo\'limiga o\'ting → "Yangi Bemor" → F.I.O, telefon, tug\'ilgan sana va ixtiyoriy ma\'lumotlarni to\'ldiring → Saqlash. Yangi bemor uchun avtomatik birinchi tashrif yaratiladi. Biriktirilgan doktor tanlashingiz mumkin.'
-  }
-
-  // Tashrif
-  if (/tashrif|visit|yakunlash|complete|davolanish/.test(q)) {
-    return 'Tashrif: Bemor profilida "Tashriflar" tabida tashriflarni ko\'rasiz. Tashrifni "Davolanish boshlandi" qilgach, odontogramma va material sarfini kiritishingiz mumkin. "Yakunlash" tugmasi bilan xizmat narxi va to\'langan summani kiriting; qarz qolsa "Qarzdor" bilan yakunlang.'
-  }
-
-  // Material sarfi / ombor
-  if (/material|sarf|ombor|kirim|chiqim|inventory/.test(q)) {
-    return 'Material sarfi: Bemor → Odontogramma tab → Tashrif tanlang (yoki "Yangi tashrif") → "Material qo\'shish" → Material va miqdorni tanlang → Saqlash. Ombordagi qoldiq avtomatik kamayadi. Ombor bo\'limida Kirim/Chiqim va Harajatlar ham bor.'
-  }
-
-  // Qarz
-  if (/qarz|debt|qarzdor/.test(q)) {
-    return 'Qarz: Tashrifni yakunlashda "To\'langan summa" xizmat narxidan kam bo\'lsa, qolgan qism qarzga yoziladi. Bemor keyinroq to\'lov qilganda To\'lovlar bo\'limida yoki bemor profilida to\'lov qo\'shasiz va qarz kamayadi.'
-  }
-
-  // Hisobot
-  if (/hisobot|report|statistika|daromad/.test(q)) {
-    return 'Hisobotlar: Hisobotlar bo\'limida tanlangan sana oralig\'ida jami to\'lovlar, qaytarimlar, sof daromad, qarzlar, ombor harajatlari, kirim/chiqim va xizmatlar bo\'yicha tushum ko\'rsatiladi. Filtrlarni to\'ldirib "Filtrni qo\'llash" bosing.'
-  }
-
-  // To'lov
-  if (/to\'lov|payment|tolov/.test(q)) {
-    return 'To\'lov: To\'lovlar bo\'limida barcha to\'lovlar va qaytarimlar. Bemor profilida "To\'lovlar" tabida shu bemor uchun to\'lov qo\'shish mumkin. Naqd, karta yoki o\'tkazma tanlashingiz mumkin.'
-  }
-
-  // Uchrashuv / qabul
-  if (/uchrashuv|qabul|appointment|jadval/.test(q)) {
-    return 'Uchrashuvlar: Uchrashuvlar bo\'limida kun/hafta/oy ko\'rinishida qabullar. Yangi uchrashuv — bemor, doktor, sana, vaqt va xizmatni tanlang. Statusni "Keldi", "Davolanish" va "Yakunlandi" ga o\'zgartirishingiz mumkin.'
-  }
-
-  // Odontogramma
-  if (/odontogramma|tish|plomba|karies/.test(q)) {
-    return 'Odontogramma: Bemor → Odontogramma tab → Tashrif tanlang. Tishni bosing va status (sog\'lom, karies, plomba va h.k.) yoki xizmat tanlang. Material sarfi alohida "Material qo\'shish" orqali kiritiladi.'
-  }
-
-  // Sozlamalar
-  if (/sozlamalar|settings|logo|til/.test(q)) {
-    return 'Sozlamalar: Sozlamalar bo\'limida klinika logotipi, nomi va tilni o\'zgartirishingiz mumkin. Shifokorlar o\'z parolini Doctor profilida o\'zgartirishi mumkin.'
-  }
-
-  // Doktor
-  if (/doktor|shifokor|doctor/.test(q)) {
-    return 'Doktorlar: Admin "Doktorlar" bo\'limida yangi doktor qo\'shadi (F.I.O, telefon, parol, mutaxassislik). Doktorlar telefon va parol bilan "Shifokor" tabida tizimga kiradi.'
-  }
-
-  // Telegram
-  if (/telegram|bot|xabar/.test(q)) {
-    return 'Telegram: Bemor profilida "Telegram xabar yuborish" tugmasi orqali bemorga xabar yuborishingiz mumkin. Bemor avval Telegram botda /register qilishi kerak. Sozlamalar TELEGRAM_INTEGRATION.md da.'
-  }
-
-  // Default
-  return 'Bu mavzuda aniq ma\'lumotim yo\'q. Savolingizni boshqacha so\'zlab ko\'ring (masalan: bemor qo\'shish, tashrif, to\'lov, ombor, hisobot). Yoki "Yordam" menyusidan yoki administratorga murojaat qiling.'
+  if (!q) return 'empty'
+  if (/salom|hello|yordam|nima qilish|qanday ishlatish|boshlash|привет|помощь|помоги|как пользоваться|как начать/.test(q)) return 'welcome'
+  if (/bemor|patient|пациент|добавить пациента|как добавить|как создать пациента|qo'shish|qanday qo'shiladi|yangi bemor/.test(q)) return 'bemor'
+  if (/tashrif|visit|визит|приём|прием|yakunlash|complete|davolanish|davolash|завершить|лечение/.test(q)) return 'tashrif'
+  if (/material|sarf|ombor|kirim|chiqim|inventory|harajat|материал|склад|расход|приход|уход/.test(q)) return 'material'
+  if (/qarz|debt|qarzdor|qoldiq|долг|задолженность|кредит/.test(q)) return 'qarz'
+  if (/hisobot|report|statistika|daromad|filtr|отчет|отчёт|статистика|доход|фильтр/.test(q)) return 'hisobot'
+  if (/to'lov|payment|tolov|naqd|karta|o'tkazma|платеж|оплата|наличн|карта|перевод/.test(q)) return 'tolov'
+  if (/uchrashuv|qabul|appointment|jadval|taqvim|встреча|приём|прием|запись|расписание|календар/.test(q)) return 'uchrashuv'
+  if (/odontogramma|tish|plomba|karies|tish holati|одонтограмм|зуб|пломба|кариес/.test(q)) return 'odontogramma'
+  if (/sozlamalar|settings|logo|til|klinika nomi|настройки|настройка|логотип|язык|клиник/.test(q)) return 'sozlamalar'
+  if (/doktor|shifokor|doctor|yangi doktor|врач|доктор|добавить врача|как добавить врача/.test(q)) return 'doktor'
+  if (/telegram|bot|xabar|register|телеграм|бот|сообщен|регистрац/.test(q)) return 'telegram'
+  if (/xizmat|service|narx|narxlari|услуг|цена|прайс/.test(q)) return 'xizmat'
+  return 'default'
 }
 
 function ask(text) {
@@ -207,7 +154,8 @@ function ask(text) {
   inputText.value = ''
   thinking.value = true
   setTimeout(() => {
-    const answer = getAnswer(question)
+    const key = getAnswerKey(question)
+    const answer = t('shifoAI.answers.' + key)
     messages.value.push({ role: 'assistant', text: answer })
     thinking.value = false
     nextTick(() => {
