@@ -41,7 +41,10 @@
     "administrator": "Administrator",
     "doctor": "Shifokor",
     "logout": "Chiqish",
-    "password": "Parol"
+    "password": "Parol",
+    "filters": "Filtrlar",
+    "clearFilters": "Filtrlarni tozalash",
+    "apply": "Qo'llash"
   },
   "auth": {
     "login": "Kirish",

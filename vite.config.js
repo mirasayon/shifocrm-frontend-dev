@@ -7,16 +7,6 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
-  server: {
-    proxy: {
-      // Development: Telegram bot API orqali CORS dan qochish
-      '/api/telegram': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/telegram/, '/api'),
-      },
-    },
-  },
   plugins: [
     vue(),
     vueDevTools(),

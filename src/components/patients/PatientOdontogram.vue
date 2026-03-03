@@ -447,6 +447,7 @@ import * as visitServicesApi from '@/api/visitServicesApi'
 import { listServices } from '@/api/servicesApi'
 import { listInventoryItems, listInventoryConsumptionsByVisitId, createInventoryConsumption, deleteInventoryConsumption } from '@/api/inventoryApi'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
+import { sendVisitCompleted, schedulePatientFollowUps } from '@/api/telegramApi'
 import Tooth from './Tooth.vue'
 
 const { TOOTH_STATES } = odontogramApi
@@ -485,8 +486,8 @@ const originalOdontogramData = ref(null)
 
 const upperRight = [18, 17, 16, 15, 14, 13, 12, 11]
 const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28]
-const lowerLeft = [48, 47, 46, 45, 44, 43, 42, 41]
-const lowerRight = [31, 32, 33, 34, 35, 36, 37, 38]
+const lowerLeft = [38, 37, 36, 35, 34, 33, 32, 31]
+const lowerRight = [41, 42, 43, 44, 45, 46, 47, 48]
 const toothIds = [...upperRight, ...upperLeft, ...lowerLeft, ...lowerRight]
 
 const teeth = ref(toothIds.map(id => ({ id, status: 'healthy', service_id: null })))
@@ -578,6 +579,7 @@ const formatCurrency = (amount) => {
   }).format(amount).replace('UZS', t('common.currencySuffix'))
 }
 
+// Har bir tish uchun status map - faqat odontogramdan olinadi
 const toothStatusMap = computed(() => {
   const map = {}
   teeth.value.forEach((tooth) => {
@@ -654,26 +656,27 @@ const syncTeethFromOdontogram = () => {
 }
 
 // visit_services dan faqat odontogramda yo'q tishlarni qo'shamiz — mavjud tishlarni overwrite qilmaymiz
+// Bu funksiya faqat yangi tashrif yaratilganda chaqiriladi
 const syncTeethFromVisitServices = () => {
   if (!currentOdontogram.value || !visitServices.value.length) return
-  
+
   if (!currentOdontogram.value.data.teeth) {
     currentOdontogram.value.data.teeth = {}
   }
   const data = currentOdontogram.value.data.teeth
   let hasChanges = false
-  
+
   for (const service of visitServices.value) {
     const tid = service.tooth_id
     if (tid == null) continue
     const key = String(tid)
-    
+
     // Faqat odontogramda bu tish yo'q bo'lsa qo'shamiz (foydalanuvchi o'zgartirganini overwrite qilmaymiz)
     if (data[tid] || data[key]) continue
-    
+
     let serviceId = null
     if (service.service_name && servicesList.value.length > 0) {
-      const matched = servicesList.value.find(s => 
+      const matched = servicesList.value.find(s =>
         s.label.toLowerCase() === service.service_name.toLowerCase() ||
         s.label === service.service_name
       )
@@ -681,7 +684,7 @@ const syncTeethFromVisitServices = () => {
         serviceId = Number(matched.value) || null
       }
     }
-    
+
     const inferredStatus = inferStatusFromServiceName(service.service_name) || 'filling'
     data[key] = {
       state: inferredStatus,
@@ -690,7 +693,7 @@ const syncTeethFromVisitServices = () => {
     }
     hasChanges = true
   }
-  
+
   if (hasChanges) {
     currentOdontogram.value.data.teeth = { ...data }
     syncTeethFromOdontogram()
@@ -708,8 +711,6 @@ const loadVisitServices = async () => {
   }
   try {
     visitServices.value = await visitServicesApi.getVisitServicesByVisitId(currentVisit.value.id)
-    // visit_services yuklangandan keyin, tishlarni odontogrammaga sync qilamiz
-    syncTeethFromVisitServices()
   } catch (error) {
     console.error('Failed to load visit services:', error)
     visitServices.value = []
@@ -956,8 +957,7 @@ const loadOdontogram = async (visitId) => {
       doctor_id: props.doctorId
     })
     originalOdontogramData.value = JSON.parse(JSON.stringify(currentOdontogram.value.data))
-    syncTeethFromOdontogram()
-    // Avval servicesList yuklashimiz kerak (syncTeethFromVisitServices uchun)
+    syncTeethFromOdontogram() // Tishlar statusini faqat odontogramdan olamiz
     await loadServicesMenu()
     await Promise.all([loadConsumptions(), loadVisitServices(), loadInventoryItems()])
   } catch (error) {
@@ -1063,6 +1063,65 @@ const completeCurrentVisit = async () => {
     }
 
     toast.success(t('odontogram.toastVisitCompleted'))
+
+    // Telegram habar yuborish (async, xatolarni ushlamaydi)
+    try {
+      const discountPercent = currentVisit.value.discount_percent || 0
+      const paidAmount = totalPrice
+      const debtAmount = Number(currentVisit.value.debt_amount) || 0
+
+      const totalBeforeDiscount = discountPercent > 0
+        ? Math.round(totalPrice / (1 - discountPercent / 100))
+        : totalPrice
+
+      const visitDate = currentVisit.value.date
+        ? new Date(currentVisit.value.date).toLocaleDateString('uz-UZ', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+        : new Date().toLocaleDateString('uz-UZ', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+
+      const services = visitServices.value.map(vs => ({
+        name: vs.service_name || 'Xizmat',
+        price: Number(vs.price) || 0,
+        tooth: vs.tooth_id || null
+      }))
+
+      await sendVisitCompleted({
+        patientId: String(props.patient.id),
+        doctorName: currentVisit.value.doctor_name || 'Shifokor',
+        doctorPhone: currentVisit.value.doctor_phone || null,
+        visitDate,
+        services,
+        discount: discountPercent,
+        totalBeforeDiscount,
+        totalAfterDiscount: totalPrice,
+        paid: paidAmount,
+        remaining: debtAmount
+      })
+
+      const followUpResult = await schedulePatientFollowUps({
+        patientId: String(props.patient.id),
+        patientName: props.patient?.full_name || props.patient?.name || null,
+        phone: props.patient?.phone || null,
+        notes: 'Visit completed from odontogram'
+      })
+
+      if (!followUpResult.ok) {
+        console.warn('⚠️ Follow-up xabarlar rejalashtirilmadi:', followUpResult.error)
+      } else {
+        console.log(`✅ Follow-up xabarlar rejalashtirildi: ${followUpResult.scheduledCount || 0}`)
+      }
+
+      console.log('✅ Telegram habar yuborildi')
+    } catch (telegramError) {
+      console.warn('⚠️ Telegram habar yuborilmadi (asosiy jarayon davom etadi):', telegramError)
+    }
   } catch (error) {
     console.error('Failed to complete visit:', error)
     toast.error(t('odontogram.errorCompleteVisit'))

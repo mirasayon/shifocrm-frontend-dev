@@ -5,13 +5,19 @@
       ref="buttonRef"
       type="button"
       :disabled="disabled"
-      class="rounded-lg sm:rounded-xl border-2 transition-transform duration-150 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-60 touch-manipulation min-w-[40px] min-h-[48px] sm:min-w-0 sm:min-h-0 overflow-hidden"
+      class="transition-transform duration-150 hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:opacity-60 touch-manipulation min-w-[40px] min-h-[48px] sm:min-w-0 sm:min-h-0 overflow-hidden"
       :class="statusContainerClass"
       :style="toothStyle"
       @click="handleSelect"
     >
-      <!-- SVG mavjud bo'lsa tish shakli, aks holda tanlangan holat rangini ko'rsatish -->
-      <div v-if="svgMarkup" class="tooth-svg tooth-svg-responsive" :class="[statusClass, { 'tooth-status--service': !!serviceColor }]" v-html="svgMarkup"></div>
+      <img
+        v-if="svgLoaded"
+        :src="toothSrc"
+        :alt="`Tooth ${id}`"
+        class="tooth-svg tooth-svg-responsive object-contain"
+        :class="[{ 'tooth-svg--service': !!serviceColor }, statusSvgClass]"
+        @error="onImgError"
+      />
       <div
         v-else
         class="tooth-fallback flex items-center justify-center w-full h-full min-h-[48px] sm:min-h-[64px] text-white text-xs font-bold"
@@ -19,12 +25,46 @@
       >
         {{ id }}
       </div>
+
+      <div class="absolute inset-0 pointer-events-none z-10">
+        <div v-if="status === 'caries'" class="caries-overlay">
+          <span class="caries-dot dot-1"></span>
+          <span class="caries-dot dot-2"></span>
+          <span class="caries-dot dot-3"></span>
+        </div>
+
+        <div v-else-if="status === 'filled' || status === 'filling'" class="absolute inset-0 flex items-center justify-center">
+          <span class="filled-mark"></span>
+        </div>
+
+        <div v-else-if="status === 'crown'" class="absolute inset-0 flex items-center justify-center">
+          <div class="crown-mark-wrapper">
+            <span class="crown-mark"></span>
+            <span class="crown-text">I</span>
+          </div>
+        </div>
+
+        <div v-else-if="status === 'root_canal'" class="absolute inset-0 flex items-center justify-center">
+          <span class="root-mark"></span>
+        </div>
+
+        <div v-else-if="status === 'missing'" class="missing-overlay">
+          <span class="missing-line line-1"></span>
+          <span class="missing-line line-2"></span>
+        </div>
+      </div>
+
+      <span
+        v-if="status !== 'healthy' && status !== 'missing'"
+        class="absolute top-0.5 right-0.5 h-3 w-3 rounded-full ring-1 ring-white shadow-md z-20"
+        :class="statusDotClass"
+      ></span>
     </button>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 
 const props = defineProps({
   id: {
@@ -48,10 +88,33 @@ const props = defineProps({
 
 const emit = defineEmits(['select'])
 
-const svgMarkup = ref('')
 const buttonRef = ref(null)
+const svgLoaded = ref(true)
 
-const statusClass = computed(() => `tooth-status--${props.status || 'healthy'}`)
+const toothSrc = computed(() => `/teeth/${props.id}.svg`)
+
+const statusSvgClass = computed(() => {
+  if (props.status === 'missing') return 'opacity-25 grayscale'
+  return ''
+})
+
+const statusDotClass = computed(() => {
+  switch (props.status) {
+    case 'caries':
+      return 'bg-slate-900'
+    case 'filled':
+    case 'filling':
+      return 'bg-blue-500'
+    case 'crown':
+      return 'bg-amber-500'
+    case 'root_canal':
+      return 'bg-violet-500'
+    case 'missing':
+      return 'bg-slate-400'
+    default:
+      return 'bg-emerald-500'
+  }
+})
 
 // Xizmat rangi — SVG va/yoki fon uchun (tanlangan tish aniq ko'rinsin)
 const toothStyle = computed(() => {
@@ -63,27 +126,27 @@ const toothStyle = computed(() => {
       borderWidth: '2px'
     }
   }
-  return undefined
+  return null
 })
 
 const statusContainerClass = computed(() => {
   if (props.serviceColor) {
-    return 'border-2' // toothStyle background va border beradi
+    return '' // toothStyle background va border beradi
   }
   switch (props.status) {
     case 'caries':
-      return 'border-red-400 bg-red-100'
+      return 'bg-red-50'
     case 'filling':
     case 'filled':
-      return 'border-blue-400 bg-blue-100'
+      return 'bg-blue-50'
     case 'missing':
-      return 'border-slate-300 bg-slate-100'
+      return 'bg-slate-50'
     case 'crown':
-      return 'border-amber-400 bg-amber-100'
+      return 'bg-amber-50'
     case 'root_canal':
-      return 'border-violet-400 bg-violet-100'
+      return 'bg-violet-50'
     default:
-      return 'border-slate-200 bg-white'
+      return 'bg-white'
   }
 })
 
@@ -107,17 +170,8 @@ const fallbackClass = computed(() => {
   }
 })
 
-const fetchSvg = async () => {
-  try {
-    const response = await fetch(`/teeth/individual/tooth-${props.id}.svg`)
-    if (!response.ok) {
-      throw new Error(`Failed to load tooth SVG ${props.id}`)
-    }
-    svgMarkup.value = await response.text()
-  } catch (error) {
-    console.error('Failed to load tooth SVG:', error)
-    svgMarkup.value = ''
-  }
+const onImgError = () => {
+  svgLoaded.value = false
 }
 
 const handleSelect = () => {
@@ -126,8 +180,9 @@ const handleSelect = () => {
   emit('select', { id: props.id, rect })
 }
 
-onMounted(fetchSvg)
-watch(() => props.id, fetchSvg)
+watch(() => props.id, () => {
+  svgLoaded.value = true
+})
 </script>
 
 <style scoped>
@@ -154,45 +209,111 @@ watch(() => props.id, fetchSvg)
   display: block;
 }
 
-.tooth-status--caries :deep(.tooth_inner),
-.tooth-status--caries :deep(.tooth_inner path) {
-  fill: #ef4444;
-  stroke: #ef4444;
-}
-
-.tooth-status--filling :deep(.tooth_inner),
-.tooth-status--filling :deep(.tooth_inner path) {
-  fill: #3b82f6;
-  stroke: #3b82f6;
-}
-
-.tooth-status--crown :deep(.tooth_inner),
-.tooth-status--crown :deep(.tooth_inner path) {
-  fill: #f59e0b;
-  stroke: #f59e0b;
-}
-
-.tooth-status--missing :deep(.tooth_inner),
-.tooth-status--missing :deep(.tooth_inner path) {
-  opacity: 0.2;
-}
-
-.tooth-status--root_canal :deep(.tooth_inner),
-.tooth-status--root_canal :deep(.tooth_inner path) {
-  fill: #8b5cf6;
-  stroke: #8b5cf6;
-}
-
 /* Xizmatlar bo'limida sozlangan rang — status rangini almashtiradi */
-.tooth-status--service :deep(.tooth_inner),
-.tooth-status--service :deep(.tooth_inner path),
-.tooth-status--service :deep(svg path),
-.tooth-status--service :deep(svg) {
-  fill: var(--tooth-service-color) !important;
-  stroke: var(--tooth-service-color) !important;
+.tooth-svg--service {
+  filter: drop-shadow(0 0 1px color-mix(in oklab, var(--tooth-service-color), #000 12%));
 }
 
 .tooth-fallback--service {
   background: var(--tooth-service-color) !important;
+}
+
+.caries-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.caries-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #1f2937;
+  box-shadow: 0 0 0 1px #ffffff, 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dot-1 {
+  top: 32%;
+  left: 42%;
+}
+
+.dot-2 {
+  top: 48%;
+  left: 52%;
+}
+
+.dot-3 {
+  top: 42%;
+  left: 33%;
+}
+
+.filled-mark {
+  width: 16px;
+  height: 16px;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.5);
+}
+
+.crown-mark-wrapper {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crown-mark {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f59e0b;
+  border-radius: 9999px;
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  box-shadow: 0 0 0 2px #fef3c7, 0 2px 8px rgba(245, 158, 11, 0.5);
+}
+
+.crown-text {
+  position: relative;
+  z-index: 1;
+  font-size: 18px;
+  font-weight: 700;
+  color: #f59e0b;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+.root-mark {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: #a855f7;
+  box-shadow: 0 0 0 2px #ffffff, 0 2px 6px rgba(168, 85, 247, 0.5);
+  border: 1px solid #9333ea;
+}
+
+.missing-overlay {
+  position: absolute;
+  inset: 0;
+}
+
+.missing-line {
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  width: 60%;
+  height: 3px;
+  background: #dc2626;
+  transform-origin: center;
+  box-shadow: 0 0 0 1px #ffffff, 0 2px 4px rgba(220, 38, 38, 0.4);
+}
+
+.line-1 {
+  transform: rotate(35deg);
+}
+
+.line-2 {
+  transform: rotate(-35deg);
 }
 </style>

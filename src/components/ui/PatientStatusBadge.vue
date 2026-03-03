@@ -17,11 +17,11 @@
         v-if="showIcon"
         :class="['w-3.5 h-3.5', config.textClass]"
       />
-      
+
       <!-- Label -->
       <span>{{ config.label }}</span>
     </span>
-    
+
     <!-- Tooltip -->
     <Transition
       enter-active-class="transition ease-out duration-200"
@@ -49,20 +49,18 @@
 import { ref, computed } from 'vue'
 import {
   CheckCircleIcon,
-  PauseCircleIcon,
-  ArchiveBoxIcon,
-  XCircleIcon,
+  ClockIcon,
+  UserCircleIcon,
   ExclamationCircleIcon,
-  NoSymbolIcon,
   QuestionMarkCircleIcon
 } from '@heroicons/vue/24/outline'
-import { getPatientStatusConfig, PATIENT_STATUSES } from '@/constants/patientStatus'
+import { getPatientStatusConfig } from '@/constants/patientStatus'
 
 const props = defineProps({
   status: {
     type: String,
     required: true,
-    validator: (value) => Object.values(PATIENT_STATUSES).includes(value)
+    validator: (value) => typeof value === 'string' && value.length > 0
   },
   showIcon: {
     type: Boolean,
@@ -81,11 +79,9 @@ const config = computed(() => getPatientStatusConfig(props.status))
 const iconComponent = computed(() => {
   const iconMap = {
     'check-circle': CheckCircleIcon,
-    'pause-circle': PauseCircleIcon,
-    archive: ArchiveBoxIcon,
-    'x-circle': XCircleIcon,
+    clock: ClockIcon,
+    'user-circle': UserCircleIcon,
     'exclamation-circle': ExclamationCircleIcon,
-    'no-symbol': NoSymbolIcon,
     'question-mark': QuestionMarkCircleIcon
   }
   return iconMap[config.value.icon] || QuestionMarkCircleIcon

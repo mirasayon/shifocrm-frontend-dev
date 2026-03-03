@@ -7,6 +7,7 @@ import { supabasePost, supabasePatchWhere, supabaseDeleteWhere } from './supabas
 import { getCurrentClinicId } from '@/lib/clinicContext'
 import { supabaseGetWithClinicFallback } from '@/lib/supabaseClinicFallback'
 import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
+import { sendVisitCompleted, schedulePatientFollowUps } from './telegramApi'
 
 const TABLE = 'visits'
 
@@ -310,7 +311,10 @@ export const updateVisit = async (id, payload) => {
  * @returns {Promise<Object>}
  */
 export const completeVisit = async (id) => {
-  return updateVisit(id, { status: 'completed_paid', debt_amount: null })
+  const result = await updateVisit(id, { status: 'completed_paid', debt_amount: null })
+  // Telegram habar yuborish (async, xatolarni ushlamaydi)
+  sendVisitCompletedTelegram(id).catch(err => console.warn('Telegram habar yuborilmadi:', err))
+  return result
 }
 
 /**
@@ -329,10 +333,15 @@ export const completeVisitWithDebt = async (id, debtAmount = null) => {
     finalDebtAmount = calculateDebt(visit.price, visit.paid_amount)
   }
 
-  return updateVisit(id, {
+  const result = await updateVisit(id, {
     status: 'completed_debt',
     debt_amount: finalDebtAmount !== null ? Number(finalDebtAmount) : null
   })
+
+  // Telegram habar yuborish (async, xatolarni ushlamaydi)
+  sendVisitCompletedTelegram(id).catch(err => console.warn('Telegram habar yuborilmadi:', err))
+
+  return result
 }
 
 /**
@@ -366,3 +375,99 @@ export const deleteVisit = async (id) => {
     throw error
   }
 }
+
+/**
+ * Tashrif yakunlanganda bemor telegram'ga avtomatik habar yuborish
+ * @param {number|string} visitId
+ */
+async function sendVisitCompletedTelegram(visitId) {
+  try {
+    // Visit, patient, doctor, va visit_services ma'lumotlarini olish
+    const visit = await getVisitById(visitId)
+    if (!visit) return
+
+    // Patient ma'lumotini olish
+    const { supabaseGet } = await import('./supabaseConfig')
+    const patients = await supabaseGet('patients', `id=eq.${visit.patient_id}`)
+    const patient = patients?.[0]
+    if (!patient) return
+
+    // Doctor ma'lumotini olish
+    let doctorName = 'Shifokor'
+    let doctorPhone = null
+    if (visit.doctor_id) {
+      const doctors = await supabaseGet('doctors', `id=eq.${visit.doctor_id}`)
+      const doctor = doctors?.[0]
+      if (doctor) {
+        doctorName = doctor.name || 'Shifokor'
+        doctorPhone = doctor.phone || null
+      }
+    }
+
+    // Visit services ma'lumotlarini olish
+    const { getVisitServicesByVisitId } = await import('./visitServicesApi')
+    const visitServices = await getVisitServicesByVisitId(visitId)
+
+    // Xizmatlar ro'yxatini tayyorlash
+    const services = visitServices.map(vs => ({
+      name: vs.service_name || 'Xizmat',
+      price: Number(vs.price) || 0,
+      tooth: vs.tooth_id || null
+    }))
+
+    // Narxlarni hisoblash
+    const totalPrice = Number(visit.price) || 0
+    const paidAmount = Number(visit.paid_amount) || 0
+    const discountPercent = Number(visit.discount_percent) || 0
+    const debtAmount = Number(visit.debt_amount) || 0
+
+    // Chegirmadan oldingi narx
+    const totalBeforeDiscount = discountPercent > 0
+      ? Math.round(totalPrice / (1 - discountPercent / 100))
+      : totalPrice
+
+    // Visit sanasini formatlash
+    const visitDate = visit.date
+      ? new Date(visit.date).toLocaleDateString('uz-UZ', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+      : new Date().toLocaleDateString('uz-UZ', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+
+    // Telegram habar yuborish
+    await sendVisitCompleted({
+      patientId: String(patient.id),
+      doctorName,
+      doctorPhone,
+      visitDate,
+      services,
+      discount: discountPercent,
+      totalBeforeDiscount,
+      totalAfterDiscount: totalPrice,
+      paid: paidAmount,
+      remaining: debtAmount
+    })
+
+    const followUpResult = await schedulePatientFollowUps({
+      patientId: String(patient.id),
+      patientName: patient.full_name || patient.name || null,
+      phone: patient.phone || null,
+      notes: 'Visit completed from visitsApi'
+    })
+
+    if (!followUpResult.ok) {
+      console.warn('⚠️ Follow-up scheduling failed:', followUpResult.error)
+    }
+
+    console.log('✅ Visit completed telegram sent:', visitId)
+  } catch (error) {
+    // Xato bo'lsa, asosiy jarayonni to'xtatmaymiz
+    console.warn('⚠️ Failed to send visit completed telegram:', error)
+  }
+}
+

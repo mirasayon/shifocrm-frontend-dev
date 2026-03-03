@@ -28,9 +28,9 @@
                   @click="openPatientStatusModal"
                   class="cursor-pointer hover:opacity-80 transition-opacity touch-manipulation"
                 >
-                  <PatientStatusBadge :status="patient.status || 'active'" />
+                  <PatientStatusBadge :status="normalizePatientStatus(patient.status)" />
                 </button>
-                <PatientStatusBadge v-else :status="patient.status || 'active'" />
+                <PatientStatusBadge v-else :status="normalizePatientStatus(patient.status)" />
               </div>
               <!-- MED ID — prominent, copyable on mobile -->
               <div class="flex items-center gap-2 mt-1">
@@ -145,7 +145,7 @@
 
           <!-- To'lovlar Tab -->
           <div v-else-if="activeTab === 'payments'">
-            <PatientPaymentsPlaceholder :patient-id="patient.id" />
+            <PatientPaymentsPlaceholder :patient-id="patient.id" @update-status="handlePaymentStatusUpdate" />
           </div>
 
           <!-- Davolash rejasi Tab -->
@@ -187,7 +187,7 @@
       >
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
           <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-          
+
           <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
               <div class="flex items-center justify-between mb-4">
@@ -263,7 +263,7 @@
       >
         <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
           <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></div>
-          
+
           <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6">
               <div class="flex items-center justify-between mb-4">
@@ -280,7 +280,7 @@
                 <!-- Current Status -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Hozirgi status:</label>
-                  <PatientStatusBadge v-if="patient" :status="patient.status || 'active'" />
+                  <PatientStatusBadge v-if="patient" :status="normalizePatientStatus(patient.status)" />
                 </div>
 
                 <!-- New Status -->
@@ -339,7 +339,7 @@ import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import { usePatientsStore } from '@/stores/patients'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
-import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
+import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 import * as visitsApi from '@/api/visitsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
@@ -423,6 +423,19 @@ const loadTotalDebt = async (patientId) => {
   }
 }
 
+// Tolovlar bo'limida status o'zgargan bo'lsa bu handler qo'ng'iroa qiladi
+const handlePaymentStatusUpdate = async (newStatus) => {
+  if (newStatus === 'completed') {
+    // Bemor statusi yangilangan — data refresh qilish
+    await loadTotalDebt(patient.value.id)
+    await checkIncompleteVisits(patient.value.id)
+    // Agar PatientsView ochiq bo'lsa, u refresh bo'lishi kerak
+    window.dispatchEvent(new CustomEvent('patient-status-updated', {
+      detail: { patientId: patient.value.id, status: newStatus }
+    }))
+  }
+}
+
 // Yakunlanmagan tashriflar bor-yo'qligini tekshirish
 const checkIncompleteVisits = async (patientId) => {
   try {
@@ -430,9 +443,9 @@ const checkIncompleteVisits = async (patientId) => {
       visitsApi.getVisitsByPatientId(patientId),
       getVisitServicesByPatientId(patientId)
     ])
-    
-    hasIncompleteVisits.value = visits.some(v => 
-      v.status === 'in_progress' || 
+
+    hasIncompleteVisits.value = visits.some(v =>
+      v.status === 'in_progress' ||
       v.status === 'completed_debt' ||
       (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
     ) || services.length > 0
@@ -446,12 +459,12 @@ const checkIncompleteVisits = async (patientId) => {
 const handleCompleteAll = async () => {
   if (!patient.value) return
   if (!window.confirm('Barcha tashriflarni yakunlashni tasdiqlaysizmi?')) return
-  
+
   completing.value = true
   try {
     const doctorId = isSolo.value ? authStore.user?.id : (patient.value.doctor_id || null)
     const result = await completeAllPatientVisits(patient.value.id, doctorId)
-    
+
     if (result.success) {
       toast.success(`Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
       await Promise.all([
@@ -483,7 +496,7 @@ const formatCurrency = (amount) => {
 // Patient status o'zgartirish modalini ochish
 const openPatientStatusModal = () => {
   if (!isAdmin.value) return
-  newPatientStatus.value = patient.value?.status || 'active'
+  newPatientStatus.value = normalizePatientStatus(patient.value?.status)
   showPatientStatusModal.value = true
 }
 
@@ -495,7 +508,7 @@ const closePatientStatusModal = () => {
 // Patient status o'zgartirish
 const updatePatientStatus = async () => {
   if (!isAdmin.value || !patient.value) return
-  
+
   updatingPatientStatus.value = true
   try {
     await patientsStore.editPatient(patient.value.id, {
@@ -528,16 +541,16 @@ const closeSendMessageModal = () => {
 
 const sendMessage = async () => {
   if (!patient.value || !messageText.value.trim()) return
-  
+
   sendingMessage.value = true
   messageError.value = ''
-  
+
   try {
     const result = await sendTelegramNotification({
       patientId: patient.value.id.toString(),
       message: messageText.value.trim()
     })
-    
+
     if (result.ok) {
       toast.success(t('patientDetail.toastMessageSent'))
       closeSendMessageModal()
@@ -596,22 +609,22 @@ onMounted(async () => {
   if (route.query.visit) {
     selectedVisitId.value = Number(route.query.visit) || null
   }
-  
+
   // Route params har doim string bo'ladi, shuning uchun number formatga o'tkazamiz
   const patientIdParam = route.params.id
   const patientId = Number(patientIdParam)
-  
+
   console.log('?? PatientDetailView mounted')
   console.log('?? Route param ID:', patientIdParam, 'Type:', typeof patientIdParam)
   console.log('?? Converted ID:', patientId, 'Type:', typeof patientId)
-  
+
   // NaN tekshiruvi
   if (isNaN(patientId)) {
     console.error('? Invalid patient ID:', patientIdParam)
     loading.value = false
     return
   }
-  
+
   // Avval store'dan bemorlarni yuklash (agar bo'sh bo'lsa)
   if (patientsStore.items.length === 0) {
     console.log('?? Store is empty, fetching patients...')
@@ -627,11 +640,11 @@ onMounted(async () => {
 
   try {
     console.log('?? Calling getPatientById with number ID:', patientId)
-    
+
     // Avval store'dan qidirish
     patient.value = await patientsStore.getPatientById(patientId)
     console.log('?? Patient result from store:', patient.value)
-    
+
     // Agar topilmasa, API'dan to'g'ridan-to'g'ri qidirish
     if (!patient.value) {
       console.log('?? Not found in store, trying direct API call...')
@@ -645,7 +658,7 @@ onMounted(async () => {
         console.warn('Direct API call failed:', apiErr)
       }
     }
-    
+
     // Agar hali ham topilmasa, bemorlarni yangilash va qidirish
     if (!patient.value) {
       console.log('?? Patient still not found, refreshing store...')
@@ -658,15 +671,15 @@ onMounted(async () => {
         console.warn('Failed to refresh:', err)
       }
     }
-    
+
     if (!patient.value) {
       console.error('? Patient not found!')
       console.error('?? Looking for ID:', patientId, 'Type:', typeof patientId)
       console.error('?? Available IDs:', patientsStore.items.map(p => ({ id: p.id, name: p.full_name, type: typeof p.id })))
       console.error('?? Comparison test:')
       patientsStore.items.forEach(p => {
-        const match = p.id === patientId || 
-                      p.id === Number(patientId) || 
+        const match = p.id === patientId ||
+                      p.id === Number(patientId) ||
                       Number(p.id) === patientId ||
                       String(p.id) === String(patientId)
         console.log(`  ID ${p.id} (${typeof p.id}) === ${patientId} (${typeof patientId}): ${match}`)
@@ -674,7 +687,7 @@ onMounted(async () => {
     } else {
       console.log('? Patient loaded successfully:', patient.value.full_name)
     }
-    
+
     // Patient yuklangandan keyin visit va qarzdorlik ma'lumotlarini yuklash
     if (patient.value) {
       await Promise.all([

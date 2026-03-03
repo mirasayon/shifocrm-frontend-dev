@@ -36,12 +36,14 @@
       <div class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div class="relative flex-1">
-            <MagnifyingGlassIcon class="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 flex items-center shrink-0">
+              <MagnifyingGlassIcon class="h-5 w-5 text-gray-500" />
+            </div>
             <input
               v-model="searchQuery"
               type="text"
               :placeholder="t('patients.searchPlaceholder')"
-              class="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-4 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              class="w-full rounded-xl border border-gray-200 py-3 pl-11 pr-4 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <select
@@ -98,6 +100,12 @@
                 <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.lastVisit') }}
                 </th>
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Oxirgi to'lov
+                </th>
+                <th v-if="isAdmin && !isSolo" class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Qarzdorlik
+                </th>
                 <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   {{ t('patients.actions') }}
                 </th>
@@ -134,15 +142,23 @@
                   <span class="text-sm text-gray-600">{{ formatDate(patient.last_visit) || '-' }}</span>
                 </td>
                 <td class="px-6 py-4">
-                  <PatientStatusBadge :status="patient.status || 'active'" />
+                  <PatientStatusBadge :status="getPatientRealStatus(patient)" />
                 </td>
                 <td v-if="isAdmin && !isSolo" class="px-6 py-4">
-                  <span v-if="getLastVisitStatus(patient.id)" class="text-xs">
-                    <VisitStatusBadge
-                      :status="getLastVisitStatus(patient.id).status"
-                      :visit="getLastVisitStatus(patient.id)"
-                      :show-icon="false"
-                    />
+                  <span v-if="getLastVisitCompletedTime(patient.id)" class="text-xs text-gray-600">
+                    {{ new Date(getLastVisitCompletedTime(patient.id)).toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}
+                  </span>
+                  <span v-else class="text-xs text-gray-400">-</span>
+                </td>
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <span v-if="getLastPaymentAmount(patient.id) > 0" class="text-xs font-medium text-green-600">
+                    {{ getLastPaymentAmount(patient.id).toLocaleString('uz-UZ') }} so'm
+                  </span>
+                  <span v-else class="text-xs text-gray-400">-</span>
+                </td>
+                <td v-if="isAdmin && !isSolo" class="px-6 py-4">
+                  <span v-if="getPatientDebtAmount(patient.id) > 0" class="text-xs font-medium text-red-600">
+                    {{ getPatientDebtAmount(patient.id).toLocaleString('uz-UZ') }} so'm
                   </span>
                   <span v-else class="text-xs text-gray-400">-</span>
                 </td>
@@ -194,8 +210,11 @@
                       {{ patient.phone }}
                     </a>
                   </div>
-                  <PatientStatusBadge :status="patient.status || 'active'" class="flex-shrink-0" />
+                  <PatientStatusBadge :status="getPatientRealStatus(patient)" class="flex-shrink-0" />
                 </div>
+                <p v-if="isAdmin && !isSolo" class="text-xs text-gray-500 mt-1">
+                  {{ t('patients.assignedDoctor') }}: {{ patient.doctor_name || '-' }}
+                </p>
                 <div class="mt-3 pt-3 border-t border-gray-100">
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-xs sm:text-sm text-gray-500">
@@ -211,13 +230,6 @@
                     >
                       <PhoneIcon class="w-5 h-5" />
                     </a>
-                    <button
-                      @click.stop="openEditModal(patient)"
-                      class="mobile-action-btn text-blue-700 bg-blue-50 hover:bg-blue-100 active:scale-95 touch-manipulation flex items-center justify-center"
-                      :title="t('patients.edit')"
-                    >
-                      <PencilIcon class="w-5 h-5" />
-                    </button>
                     <button
                       v-if="isAdmin"
                       @click.stop="confirmDelete(patient)"
@@ -321,6 +333,8 @@
                     </label>
                     <input
                       v-model="patientForm.phone"
+                      @focus="ensurePhonePrefix"
+                      @input="handlePhoneInput"
                       type="tel"
                       inputmode="tel"
                       class="w-full rounded-xl border border-gray-300 px-4 py-3 text-base focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -387,14 +401,14 @@
                 <div v-if="!isSolo" class="sm:col-span-2">
                   <label class="mb-2 block text-sm font-medium text-gray-700">
                     {{ t('patients.assignedDoctor') }}
-                    <span class="font-normal text-gray-400">({{ t('patients.optional') }})</span>
+                    <span class="text-red-500">*</span>
                   </label>
                   <select
                     v-model="patientForm.doctor_id"
                     class="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     @change="updateDoctorName"
                   >
-                    <option value="">{{ t('patients.unassignedDoctor') }}</option>
+                    <option value="">{{ t('patients.select') }}</option>
                     <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
                       {{ doctor.full_name }}
                       <span v-if="doctor.specialization"> — {{ doctor.specialization }}</span>
@@ -413,7 +427,7 @@
                       {{ status.label }}
                     </option>
                   </select>
-                  <p class="mt-1 text-xs text-gray-500">{{ t('patients.defaultActiveNote') }}</p>
+                  <p class="mt-1 text-xs text-gray-500">{{ t('patients.defaultQueueNote') }}</p>
                 </div>
                 <div class="sm:col-span-2">
                   <label class="mb-2 block text-sm font-medium text-gray-700">{{ t('patients.notes') }}</label>
@@ -525,14 +539,13 @@ import { useI18n } from 'vue-i18n'
 import MainLayout from '@/layouts/MainLayout.vue'
 import PatientProfileModal from '@/components/patients/PatientProfileModal.vue'
 import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
-import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import MobileFAB from '@/components/shared/MobileFAB.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
 import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import * as visitsApi from '@/api/visitsApi'
-import { PATIENT_STATUSES, getPatientStatusLabel } from '@/constants/patientStatus'
+import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { TASHKENT_OPTIONS, TASHKENT_CITY_DISTRICTS, TASHKENT_REGION_DISTRICTS } from '@/constants/regions'
 import {
   MagnifyingGlassIcon,
@@ -546,9 +559,6 @@ import {
   PhoneIcon,
 } from '@heroicons/vue/24/outline'
 import { useRouter, useRoute } from 'vue-router'
-import { completeAllPatientVisits } from '@/lib/completePatientVisits'
-import { getVisitsByPatientId } from '@/api/visitsApi'
-import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 
 const router = useRouter()
 const route = useRoute()
@@ -560,10 +570,6 @@ const { t } = useI18n()
 
 const isAdmin = computed(() => authStore.userRole === 'admin' || authStore.userRole === 'solo')
 const isSolo = computed(() => authStore.userRole === 'solo')
-
-// Yakunlash holati
-const completingPatients = ref(new Set())
-const patientIncompleteStatus = ref({}) // { patientId: boolean }
 
 // Doktor ID ni olish
 const getCurrentDoctorId = () => {
@@ -613,7 +619,7 @@ const districtOptions = computed(() => {
 // Form
 const initialFormState = {
   full_name: '',
-  phone: '',
+  phone: '+998',
   birth_date: '',
   gender: '',
   address: '',
@@ -622,7 +628,7 @@ const initialFormState = {
   address_detail: '',
   doctor_id: '',
   doctor_name: '',
-  status: 'active',
+  status: PATIENT_STATUSES.WAITING,
   notes: '',
 }
 const patientForm = ref({ ...initialFormState })
@@ -631,23 +637,12 @@ const patientForm = ref({ ...initialFormState })
 const doctors = computed(() => doctorsStore.items)
 
 const statusOptions = computed(() => {
-  const base = [
-    PATIENT_STATUSES.ACTIVE,
-    PATIENT_STATUSES.INACTIVE,
-    PATIENT_STATUSES.FOLLOW_UP
+  const values = [
+    PATIENT_STATUSES.WAITING,
+    PATIENT_STATUSES.IN_CONSULTATION,
+    PATIENT_STATUSES.COMPLETED
   ]
 
-  const adminOnly = [
-    PATIENT_STATUSES.ARCHIVED,
-    PATIENT_STATUSES.DECEASED,
-    PATIENT_STATUSES.BLOCKED
-  ]
-
-  const values = isAdmin.value ? [...base, ...adminOnly] : [...base]
-  const currentStatus = patientForm.value?.status
-  if (currentStatus && !values.includes(currentStatus)) {
-    values.push(currentStatus)
-  }
   return values.map(value => ({
     value,
     label: getPatientStatusLabel(value)
@@ -671,7 +666,7 @@ const filteredPatients = computed(() => {
   }
 
   if (selectedStatus.value) {
-    result = result.filter(p => p.status === selectedStatus.value)
+    result = result.filter(p => normalizePatientStatus(p.status) === selectedStatus.value)
   }
 
   return result
@@ -690,9 +685,54 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-// Oxirgi tashrif statusini olish
-const getLastVisitStatus = (patientId) => {
-  return patientVisits.value[patientId] || null
+// Bemorning haqiqiy statusini oxirgi visitdan olish
+const getPatientRealStatus = (patient) => {
+  const visit = patientVisits.value[patient.id]
+  if (!visit || !visit.status) {
+    return normalizePatientStatus(patient.status || PATIENT_STATUSES.WAITING)
+  }
+
+  // Visit statusidan bemor statusini aniqlash
+  const visitStatus = visit.status
+  if (visitStatus === 'completed_debt') {
+    return 'debt' // Qarzdor statusi
+  }
+  if (visitStatus === 'completed_paid') {
+    return PATIENT_STATUSES.COMPLETED
+  }
+  if (visitStatus === 'in_progress' || visitStatus === 'arrived') {
+    return PATIENT_STATUSES.IN_CONSULTATION
+  }
+  // pending, cancelled, no_show
+  return PATIENT_STATUSES.WAITING
+}
+
+// Bemor qarzdorlik summasi
+const getPatientDebtAmount = (patientId) => {
+  const visit = patientVisits.value[patientId]
+  if (!visit || visit.status !== 'completed_debt') return 0
+  return Number(visit.debt_amount) || 0
+}
+
+// Oxirgi tashrif yakunlanish vaqtini olish
+const getLastVisitCompletedTime = (patientId) => {
+  const visit = patientVisits.value[patientId]
+  if (!visit) return null
+
+  // Visit'dagi tugallangan vaqt fieldlarini tekshirish
+  if (visit.completed_at) return visit.completed_at
+  if (visit.end_time) return visit.end_time
+  if (visit.updated_at && (visit.status === 'completed_paid' || visit.status === 'completed_debt')) {
+    return visit.updated_at
+  }
+  return null
+}
+
+// Oxirgi to'lov summasi
+const getLastPaymentAmount = (patientId) => {
+  const visit = patientVisits.value[patientId]
+  if (!visit) return null
+  return visit.paid_amount || 0
 }
 
 // Bemorlar uchun visit ma'lumotlarini yuklash (batch)
@@ -711,80 +751,52 @@ const loadPatientVisits = async (doctorId = null) => {
     })
 
     patientVisits.value = visitsMap
-    
-    // Yakunlanmagan tashriflar bor-yo'qligini tekshirish
-    await checkIncompleteVisitsForAll()
   } catch (error) {
     console.error('Failed to load patient visits:', error)
-  }
-}
-
-// Barcha bemorlar uchun yakunlanmagan tashriflar bor-yo'qligini tekshirish
-const checkIncompleteVisitsForAll = async () => {
-  try {
-    const statusMap = {}
-    for (const patient of patientsStore.items) {
-      try {
-        const [visits, services] = await Promise.all([
-          getVisitsByPatientId(patient.id),
-          getVisitServicesByPatientId(patient.id)
-        ])
-        
-        const hasIncomplete = visits.some(v => 
-          v.status === 'in_progress' || 
-          v.status === 'completed_debt' ||
-          (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
-        ) || services.length > 0
-        
-        statusMap[patient.id] = hasIncomplete
-      } catch (err) {
-        console.warn('Failed to check incomplete visits for patient', patient.id, err)
-        statusMap[patient.id] = false
-      }
-    }
-    patientIncompleteStatus.value = statusMap
-  } catch (error) {
-    console.error('Failed to check incomplete visits:', error)
-  }
-}
-
-// Bemor uchun yakunlash mumkinligini tekshirish
-const canCompletePatient = (patientId) => {
-  const role = authStore.userRole
-  if (!['doctor', 'solo', 'admin'].includes(role)) return false
-  return patientIncompleteStatus.value[patientId] === true
-}
-
-// Bemor tashriflarini yakunlash
-const completePatientVisits = async (patient) => {
-  if (!window.confirm(`"${patient.full_name}" bemorning barcha tashriflarini yakunlashni tasdiqlaysizmi?`)) return
-  
-  completingPatients.value.add(patient.id)
-  try {
-    const doctorId = isSolo.value ? authStore.user?.id : (getCurrentDoctorId() || null)
-    const result = await completeAllPatientVisits(patient.id, doctorId)
-    
-    if (result.success) {
-      toast.success(`"${patient.full_name}" - ${result.completed} ta tashrif yakunlandi`)
-      // Ma'lumotlarni yangilash
-      await Promise.all([
-        patientsStore.fetchPatients(),
-        loadPatientVisits(getCurrentDoctorId())
-      ])
-    } else {
-      toast.error(result.error || 'Xatolik yuz berdi')
-    }
-  } catch (error) {
-    console.error('Failed to complete patient visits:', error)
-    toast.error('Xatolik yuz berdi')
-  } finally {
-    completingPatients.value.delete(patient.id)
   }
 }
 
 const updateDoctorName = () => {
   const doctor = doctors.value.find(d => d.id === patientForm.value.doctor_id || d.id === Number(patientForm.value.doctor_id))
   patientForm.value.doctor_name = doctor?.full_name || ''
+}
+
+const PHONE_PREFIX = '+998'
+
+const normalizeUzPhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (!digits) return PHONE_PREFIX
+
+  let localDigits = digits
+  if (localDigits.startsWith('998')) {
+    localDigits = localDigits.slice(3)
+  } else if (localDigits.startsWith('0')) {
+    localDigits = localDigits.slice(1)
+  }
+
+  localDigits = localDigits.slice(0, 9)
+  return `${PHONE_PREFIX}${localDigits}`
+}
+
+const formatUzPhone = (value) => {
+  const normalized = normalizeUzPhone(value)
+  const local = normalized.slice(4)
+
+  const part1 = local.slice(0, 2)
+  const part2 = local.slice(2, 5)
+  const part3 = local.slice(5, 7)
+  const part4 = local.slice(7, 9)
+
+  const parts = [part1, part2, part3, part4].filter(Boolean)
+  return parts.length > 0 ? `${PHONE_PREFIX} ${parts.join(' ')}` : PHONE_PREFIX
+}
+
+const ensurePhonePrefix = () => {
+  patientForm.value.phone = formatUzPhone(patientForm.value.phone)
+}
+
+const handlePhoneInput = () => {
+  patientForm.value.phone = formatUzPhone(patientForm.value.phone)
 }
 
 // Modal Actions
@@ -843,7 +855,7 @@ const openEditModal = (patient) => {
     address_detail: detail,
     doctor_id: patient.doctor_id || '',
     doctor_name: patient.doctor_name || '',
-    status: patient.status || 'active',
+    status: normalizePatientStatus(patient.status),
     notes: patient.notes || '',
   }
   showModal.value = true
@@ -868,11 +880,6 @@ const goToPatientDetail = (patientId) => {
   router.push(`/patients/${numId}`)
 }
 
-const viewPatient = (patient) => {
-  viewingPatient.value = patient
-  showViewModal.value = true
-}
-
 const confirmDelete = (patient) => {
   deletingPatient.value = patient
   showDeleteModal.value = true
@@ -893,7 +900,14 @@ const savePatient = async () => {
     return
   }
 
+  if (!isSolo.value && !patientForm.value.doctor_id) {
+    toast.error('Klinika rejimida bemorga doktor tanlash majburiy')
+    return
+  }
+
   const payload = { ...patientForm.value, address: buildAddress() }
+  payload.phone = normalizeUzPhone(patientForm.value.phone)
+  payload.birth_date = patientForm.value.birth_date || null
   delete payload.region
   delete payload.district
   delete payload.address_detail
@@ -945,13 +959,6 @@ const exportPatients = () => {
   toast.success(t('patients.toastLoaded'))
 }
 
-// Click outside handler for status dropdown
-const handleClickOutside = (event) => {
-  if (statusDropdownRef.value && !statusDropdownRef.value.contains(event.target)) {
-    statusDropdownOpen.value = false
-  }
-}
-
 // Lifecycle
 onMounted(async () => {
   await doctorsStore.fetchAll()
@@ -984,8 +991,11 @@ onMounted(async () => {
     await loadPatientVisits()
   }
 
-  // Yakunlanmagan tashriflar holatini yuklash
-  await checkIncompleteVisitsForAll()
+  // Tolovlar bo'limida bemor statusi o'zgarsa jadvalda refresh bo'lishi uchun
+  window.addEventListener('patient-status-updated', async () => {
+    await loadPatientVisits()
+  })
+
 })
 </script>
 

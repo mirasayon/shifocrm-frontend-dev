@@ -2,13 +2,13 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import {
   listPatients,
-  getPatientById,
   getPatientsByDoctorId,
   createPatient,
   updatePatient,
   deletePatient
 } from '@/api/patientsApi'
 import { useToast } from '@/composables/useToast'
+import { normalizePatientStatus, PATIENT_STATUSES } from '@/constants/patientStatus'
 
 export const usePatientsStore = defineStore('patients', () => {
   const toast = useToast()
@@ -21,8 +21,11 @@ export const usePatientsStore = defineStore('patients', () => {
 
   // Getters
   const totalPatients = computed(() => items.value.length)
-  const activePatients = computed(() => items.value.filter(p => p.status === 'active').length)
-  const inactivePatients = computed(() => items.value.filter(p => p.status === 'inactive').length)
+  const activePatients = computed(() => items.value.filter((p) => {
+    const status = normalizePatientStatus(p.status)
+    return status === PATIENT_STATUSES.WAITING || status === PATIENT_STATUSES.IN_CONSULTATION
+  }).length)
+  const inactivePatients = computed(() => items.value.filter((p) => normalizePatientStatus(p.status) === PATIENT_STATUSES.COMPLETED).length)
 
   // Actions
   const fetchPatients = async () => {
@@ -56,18 +59,18 @@ export const usePatientsStore = defineStore('patients', () => {
   const fetchPatientById = async (id) => {
     loading.value = true
     error.value = null
-    
+
     console.log('🔍 Searching for patient ID:', id, 'Type:', typeof id)
     console.log('📦 Store items count:', items.value.length)
     console.log('📦 Store IDs:', items.value.map(p => ({ id: p.id, name: p.full_name, type: typeof p.id })))
-    
+
     try {
       // Avval store'dagi items dan qidirish
       const numId = Number(id)
       const strId = String(id)
-      
+
       console.log('🔍 Store search - Looking for:', { id, numId, strId, idType: typeof id })
-      
+
       const foundInStore = items.value.find(p => {
         // Barcha mumkin bo'lgan formatlarni tekshirish
         const match1 = p.id === id
@@ -75,9 +78,9 @@ export const usePatientsStore = defineStore('patients', () => {
         const match3 = Number(p.id) === numId
         const match4 = String(p.id) === strId
         const match5 = p.id === Number(id)
-        
+
         const match = match1 || match2 || match3 || match4 || match5
-        
+
         if (match) {
           console.log('✅ Found in store!', {
             patientId: p.id,
@@ -89,7 +92,7 @@ export const usePatientsStore = defineStore('patients', () => {
         }
         return match
       })
-      
+
       if (foundInStore) {
         currentPatient.value = foundInStore
         loading.value = false
@@ -97,7 +100,7 @@ export const usePatientsStore = defineStore('patients', () => {
       }
 
       console.log('⚠️ Not found in store, trying API...')
-      
+
       // Agar store'da topilmasa, API'dan olishga harakat qilish
       const patient = await getPatientById(id)
       if (patient) {
@@ -106,7 +109,7 @@ export const usePatientsStore = defineStore('patients', () => {
         currentPatient.value = patient
         // Store'ga qo'shish (agar yo'q bo'lsa)
         const exists = items.value.find(p => {
-          const match = p.id === patient.id || 
+          const match = p.id === patient.id ||
                  String(p.id) === String(patient.id) ||
                  Number(p.id) === Number(patient.id)
           return match
@@ -127,24 +130,24 @@ export const usePatientsStore = defineStore('patients', () => {
     } catch (err) {
       error.value = err.message || 'Bemorni yuklashda xatolik'
       console.error('❌ Failed to fetch patient:', err)
-      
+
       // Xatolik bo'lsa ham store'dan qidirish
       const numId = Number(id)
       const strId = String(id)
       const foundInStore = items.value.find(p => {
-        return p.id === id || 
-               p.id === numId || 
+        return p.id === id ||
+               p.id === numId ||
                String(p.id) === strId ||
                Number(p.id) === numId
       })
-      
+
       if (foundInStore) {
         console.log('✅ Found in store after error:', foundInStore)
         currentPatient.value = foundInStore
         loading.value = false
         return currentPatient.value
       }
-      
+
       loading.value = false
       return null
     }

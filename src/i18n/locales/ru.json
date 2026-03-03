@@ -41,7 +41,10 @@
     "administrator": "Администратор",
     "doctor": "Врач",
     "logout": "Выход",
-    "password": "Пароль"
+    "password": "Пароль",
+    "filters": "Фильтры",
+    "clearFilters": "Очистить фильтры",
+    "apply": "Применить"
   },
   "auth": {
     "login": "Вход",

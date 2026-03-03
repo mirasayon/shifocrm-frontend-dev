@@ -2,6 +2,8 @@
  * Patient helper utilities
  */
 import i18n from '@/i18n'
+import { normalizePatientStatus, PATIENT_STATUSES } from '@/constants/patientStatus'
+import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 
 /**
  * Ismdan initiallar olish (2 ta harf)
@@ -55,17 +57,28 @@ export const formatMedId = (id) => {
  * @returns {object} - { text, bgClass, textClass }
  */
 export const getStatusBadge = (status) => {
-  if (status === 'active') {
+  const normalized = normalizePatientStatus(status)
+
+  if (normalized === PATIENT_STATUSES.WAITING) {
     return {
-      text: i18n.global.t('patients.statusActive'),
-      bgClass: 'bg-green-100',
-      textClass: 'text-green-700'
+      text: i18n.global.t('patients.statusWaiting'),
+      bgClass: 'bg-amber-100',
+      textClass: 'text-amber-700'
     }
   }
+
+  if (normalized === PATIENT_STATUSES.IN_CONSULTATION) {
+    return {
+      text: i18n.global.t('patients.statusInConsultation'),
+      bgClass: 'bg-blue-100',
+      textClass: 'text-blue-700'
+    }
+  }
+
   return {
-    text: i18n.global.t('patients.statusInactive'),
-    bgClass: 'bg-gray-100',
-    textClass: 'text-gray-600'
+    text: i18n.global.t('patients.statusCompleted'),
+    bgClass: 'bg-green-100',
+    textClass: 'text-green-700'
   }
 }
 
@@ -76,9 +89,6 @@ export const getStatusBadge = (status) => {
  * @returns {object}
  */
 export const getVisitStatusBadge = (status) => {
-  // Backward compatibility - use new constants
-  const { getVisitStatusConfig, getVisitStatusLabel, getVisitStatusColors } = require('@/constants/visitStatus')
-  const config = getVisitStatusConfig(status)
   const colors = getVisitStatusColors(status)
   return {
     text: getVisitStatusLabel(status),

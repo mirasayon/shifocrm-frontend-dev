@@ -18,38 +18,40 @@
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 space-y-4">
-        <!-- Kunlik/Haftalik/Oylik filtrlash -->
-        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div class="w-full grid grid-cols-3 gap-2">
+      <!-- Filters - Clean layout -->
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 space-y-3">
+        <!-- View mode + Date navigation (single row) -->
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+          <!-- Day, Week, Month toggle -->
+          <div class="grid grid-cols-3 gap-2 flex-1 md:flex-none">
             <button
               @click="viewMode = 'day'; setToday()"
-              class="w-full px-4 py-2.5 text-sm font-medium rounded-lg border transition-all touch-target"
-              :class="viewMode === 'day' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500 shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
+              :class="viewMode === 'day' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
               {{ t('appointments.viewDay') }}
             </button>
             <button
               @click="viewMode = 'week'; setToday()"
-              class="w-full px-4 py-2.5 text-sm font-medium rounded-lg border transition-all touch-target"
-              :class="viewMode === 'week' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500 shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
+              :class="viewMode === 'week' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
               {{ t('appointments.viewWeek') }}
             </button>
             <button
               @click="viewMode = 'month'; setToday()"
-              class="w-full px-4 py-2.5 text-sm font-medium rounded-lg border transition-all touch-target"
-              :class="viewMode === 'month' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500 shadow-sm' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
+              :class="viewMode === 'month' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
               {{ t('appointments.viewMonth') }}
             </button>
           </div>
-          <!-- Sana navigatsiyasi -->
-          <div class="flex items-center gap-2 flex-1">
+
+          <!-- Date picker + navigation buttons -->
+          <div class="flex items-center gap-2">
             <button
               @click="shiftDate(-1)"
-              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               :title="t('appointments.previous')"
             >
               <ChevronLeftIcon class="w-5 h-5" />
@@ -57,53 +59,55 @@
             <input
               v-model="selectedDate"
               type="date"
-              class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
             <button
               @click="shiftDate(1)"
-              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors touch-target"
+              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               :title="t('appointments.next')"
             >
               <ChevronRightIcon class="w-5 h-5" />
             </button>
             <button
               @click="setToday"
-              class="px-4 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all active:scale-[0.98] touch-target"
+              class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg hover:from-primary-600 hover:to-cyan-700 transition-all hidden md:inline-block"
             >
               {{ t('appointments.today') }}
             </button>
           </div>
         </div>
 
-        <!-- Qidiruv va boshqa filtrlashlar -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          <!-- Qidiruv -->
-          <div class="lg:col-span-2 relative">
-            <MagnifyingGlassIcon class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <!-- Search + Status + Doctor filters (flex row) -->
+        <div class="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+          <!-- Search -->
+          <div class="relative flex-1">
+            <div class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+              <MagnifyingGlassIcon class="w-5 h-5 text-gray-400" />
+            </div>
             <input
               v-model="searchQuery"
               type="text"
               :placeholder="t('appointments.searchPlaceholder')"
-              class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
+              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
             />
           </div>
-          <!-- Status -->
-          <div>
-            <select
-              v-model="selectedStatus"
-              class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
-            >
-              <option value="">{{ t('appointments.allStatuses') }}</option>
-              <option v-for="status in statusFilterOptions" :key="status.value" :value="status.value">
-                {{ status.label }}
-              </option>
-            </select>
-          </div>
-          <!-- Doktor (faqat admin uchun) -->
+
+          <!-- Status filter -->
+          <select
+            v-model="selectedStatus"
+            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm bg-white"
+          >
+            <option value="">{{ t('appointments.allStatuses') }}</option>
+            <option v-for="status in statusFilterOptions" :key="status.value" :value="status.value">
+              {{ status.label }}
+            </option>
+          </select>
+
+          <!-- Doctor filter (admin only) -->
           <select
             v-if="isAdmin"
             v-model="selectedDoctor"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mobile-input"
+            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm bg-white"
           >
             <option value="">{{ t('appointments.allDoctors') }}</option>
             <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
@@ -111,10 +115,10 @@
             </option>
           </select>
         </div>
-        
-        <!-- Sana oralig'i ko'rsatkich -->
-        <div class="text-sm text-gray-600 text-center sm:text-left">
-          {{ dateRangeLabel }}
+
+        <!-- Date range label -->
+        <div class="text-xs text-gray-500 px-1">
+          📅 {{ dateRangeLabel }}
         </div>
       </div>
 
@@ -166,99 +170,80 @@
         </button>
       </div>
 
-      <!-- Appointments Table -->
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <!-- Appointments list - streamlined for desktop doctors -->
+      <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-visible">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 class="text-lg font-semibold text-gray-900">{{ t('appointments.listTitle') }}</h2>
-            <p class="text-sm text-gray-500">
-              {{ filteredVisits.length }} {{ t('appointments.totalAppointments') }}
-            </p>
-          </div>
-          <div class="text-sm text-gray-500">
-            {{ dateRangeLabel }}
+            <p class="text-sm text-gray-500">{{ filteredVisits.length }} {{ t('appointments.totalAppointments') }}</p>
           </div>
         </div>
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-100 text-sm">
-            <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <tr>
-                <th class="px-4 py-3">
-                  <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
-                </th>
-                <th class="px-4 py-3">{{ t('appointments.date') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.time') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.patient') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.doctor') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.service') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.status') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.payment') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.roomChannel') }}</th>
-                <th class="px-4 py-3">{{ t('appointments.notes') }}</th>
-                <th class="px-4 py-3 text-right">{{ t('appointments.actions') }}</th>
+
+        <div class="overflow-x-auto overflow-y-visible">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+              <tr class="text-left text-xs font-semibold text-gray-600">
+                <th class="px-4 py-3 w-12"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
+                <th class="px-4 py-3 w-24">{{ t('appointments.date') }}</th>
+                <th class="px-4 py-3 w-20">{{ t('appointments.time') }}</th>
+                <th class="px-4 py-3 flex-1">{{ t('appointments.patient') }}</th>
+                <th v-if="isAdmin" class="px-4 py-3 w-32">{{ t('appointments.doctor') }}</th>
+                <th class="px-4 py-3 flex-1">{{ t('appointments.service') }}</th>
+                <th class="px-4 py-3 w-28">{{ t('appointments.status') }}</th>
+                <th v-if="isAdmin" class="px-4 py-3 w-24">{{ t('appointments.payment') }}</th>
+                <th class="px-4 py-3 w-20 text-right">{{ t('appointments.actions') }}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-if="loading">
-                <td class="px-6 py-4 text-gray-500" colspan="11">{{ t('appointments.loading') }}</td>
-              </tr>
-              <tr v-else-if="filteredVisits.length === 0">
-                <td class="px-6 py-4 text-gray-500" colspan="11">{{ t('appointments.noAppointments') }}</td>
-              </tr>
-              <tr v-for="visit in filteredVisits" :key="visit.id" class="hover:bg-gray-50">
-                <td class="px-4 py-3">
-                  <input type="checkbox" :checked="selectedIds.includes(visit.id)" @change="toggleSelect(visit.id)" />
+              <tr v-if="loading" class="h-12">
+                <td class="px-6 py-4 text-center text-gray-500 text-sm" :colspan="isAdmin ? 9 : 8">
+                  {{ t('appointments.loading') }}
                 </td>
-                <td class="px-4 py-3 text-gray-700">{{ formatDate(visit.date) }}</td>
-                <td class="px-4 py-3 text-gray-700">{{ formatTimeRange(visit) }}</td>
-                <td class="px-4 py-3 text-gray-700">
+              </tr>
+              <tr v-else-if="filteredVisits.length === 0" class="h-12">
+                <td class="px-6 py-4 text-center text-gray-500 text-sm" :colspan="isAdmin ? 9 : 8">
+                  {{ t('appointments.noAppointments') }}
+                </td>
+              </tr>
+              <tr v-for="visit in filteredVisits" :key="visit.id" class="hover:bg-gray-50 transition-colors border-b border-gray-50">
+                <td class="px-4 py-3"><input type="checkbox" :checked="selectedIds.includes(visit.id)" @change="toggleSelect(visit.id)" /></td>
+                <td class="px-4 py-3 font-medium text-gray-900">{{ formatDate(visit.date) }}</td>
+                <td class="px-4 py-3 text-gray-700 text-xs">{{ formatTimeRange(visit) }}</td>
+                <td class="px-4 py-3">
                   <router-link
                     :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
-                    class="block font-medium text-primary-600 hover:text-primary-700 hover:underline"
+                    class="font-medium text-primary-600 hover:text-primary-700 hover:underline"
                   >
                     {{ getPatientName(visit.patient_id) }}
                   </router-link>
-                  <div class="text-xs text-gray-400">{{ getPatientPhone(visit.patient_id) }}</div>
+                  <div class="text-xs text-gray-500 mt-0.5">{{ getPatientPhone(visit.patient_id) }}</div>
                 </td>
-                <td class="px-4 py-3 text-gray-700">{{ visit.doctor_name || getDoctorName(visit.doctor_id) }}</td>
+                <td v-if="isAdmin" class="px-4 py-3 text-gray-700 text-sm">{{ visit.doctor_name || getDoctorName(visit.doctor_id) }}</td>
                 <td class="px-4 py-3 text-gray-700">
-                  <div>{{ visit.service_name || '-' }}</div>
-                  <div class="text-xs text-gray-400">{{ formatCurrency(visit.price || 0) }}</div>
+                  <div class="text-sm">{{ visit.service_name || '-' }}</div>
+                  <div class="text-xs text-gray-500 mt-0.5">{{ formatCurrency(visit.price || 0) }}</div>
                 </td>
                 <td class="px-4 py-3">
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                        :class="getStatusClass(visit.status)">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium" :class="getStatusClass(visit.status)">
                     {{ getStatusLabel(visit.status) }}
                   </span>
                 </td>
-                <td class="px-4 py-3 text-gray-700">
-                  <div>{{ getPaymentLabel(visit) }}</div>
-                  <div class="text-xs text-gray-400">{{ formatCurrency(visit.paid_amount || 0) }}</div>
+                <td v-if="isAdmin" class="px-4 py-3 text-sm">
+                  <div class="text-gray-700">{{ getPaymentLabel(visit) }}</div>
+                  <div class="text-xs text-gray-500 mt-0.5">{{ formatCurrency(visit.paid_amount || 0) }}</div>
                 </td>
-                <td class="px-4 py-3 text-gray-700">
-                  <div>{{ visit.room || '-' }}</div>
-                  <div class="text-xs text-gray-400">{{ visit.channel || '-' }}</div>
-                </td>
-                <td class="px-4 py-3 text-gray-600 line-clamp-2 max-w-xs">{{ visit.notes || '-' }}</td>
                 <td class="px-4 py-3">
-                  <div class="flex items-center justify-end gap-1">
-                    <router-link
-                      :to="{ name: 'patient-detail', params: { id: visit.patient_id } }"
-                      class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors"
-                      :title="t('appointments.goToPatient')"
+                  <div class="relative action-menu-wrap flex justify-end">
+                    <button
+                      :ref="(el) => setActionMenuButtonRef(visit.id, el)"
+                      @click.stop="toggleActionMenu(visit.id)"
+                      type="button"
+                      class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                      :class="{ 'bg-gray-100 text-gray-700': openActionMenuId === visit.id }"
                     >
-                      <UserCircleIcon class="w-4 h-4" />
-                      {{ t('appointments.goToPatient') }}
-                    </router-link>
-                    <div class="relative action-menu-wrap">
-                      <button
-                        @click.stop="toggleActionMenu(visit.id)"
-                        type="button"
-                        class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                        :class="{ 'bg-gray-100 text-gray-700': openActionMenuId === visit.id }"
-                      >
-                        <EllipsisVerticalIcon class="w-5 h-5" />
-                      </button>
+                      <EllipsisVerticalIcon class="w-5 h-5" />
+                    </button>
+                    <Teleport to="body">
                       <Transition
                         enter-active-class="transition ease-out duration-100"
                         enter-from-class="opacity-0 scale-95"
@@ -269,7 +254,8 @@
                       >
                         <div
                           v-if="openActionMenuId === visit.id"
-                          class="absolute right-0 top-full mt-1 z-50 w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-100 ring-1 ring-black/5"
+                          class="action-menu-panel fixed z-[90] w-48 py-1 bg-white rounded-xl shadow-lg border border-gray-100 ring-1 ring-black/5 max-h-[70vh] overflow-y-auto"
+                          :style="actionMenuStyle"
                         >
                           <template v-if="visit.status === 'pending'">
                             <button @click="updateStatus(visit, 'arrived'); closeActionMenu()" class="w-full px-4 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 flex items-center gap-2">
@@ -317,8 +303,8 @@
                           </button>
                         </div>
                       </Transition>
+                    </Teleport>
                     </div>
-                  </div>
                 </td>
               </tr>
             </tbody>
@@ -327,7 +313,7 @@
       </div>
     </div>
 
-    <!-- Create Appointment Modal -->
+    <!-- Create Appointment Modal - Simplified -->
     <Teleport to="body">
       <Transition
         enter-active-class="transition ease-out duration-200"
@@ -338,153 +324,149 @@
         leave-to-class="opacity-0"
       >
         <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl flex flex-col max-h-[90vh]">
-            <div class="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
-              <h3 class="text-lg font-semibold text-gray-900">{{ t('appointments.createTitle') }}</h3>
+          <div class="w-full max-w-sm bg-white rounded-xl shadow-xl flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 class="text-base font-semibold text-gray-900">{{ t('appointments.createTitle') }}</h3>
               <button @click="closeCreateModal" class="text-gray-400 hover:text-gray-600">
-                <XMarkIcon class="w-6 h-6" />
+                <XMarkIcon class="w-5 h-5" />
               </button>
             </div>
-            <div class="p-6 space-y-4 overflow-y-auto flex-1">
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <!-- Form - Minimal fields only -->
+            <div class="p-4 space-y-3 overflow-y-auto flex-1">
+              <!-- Patient - Required -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                  {{ t('appointments.patient') }} <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="createForm.patient_id"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  :class="{ 'border-red-300': createError && !createForm.patient_id }"
+                >
+                  <option value="">{{ t('appointments.select') }}</option>
+                  <option v-for="patient in availablePatients" :key="patient.id" :value="patient.id">
+                    {{ patient.full_name }} ({{ patient.phone }})
+                  </option>
+                </select>
+                <p v-if="availablePatients.length === 0 && !isAdmin" class="mt-1 text-xs text-amber-600">
+                  {{ t('appointments.noPatientsAvailable') }}
+                </p>
+              </div>
+
+              <!-- Doctor - Auto for doctor, required for admin -->
+              <div v-if="isAdmin">
+                <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                  {{ t('appointments.doctor') }} <span class="text-red-500">*</span>
+                </label>
+                <select
+                  v-model="createForm.doctor_id"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  :class="{ 'border-red-300': createError && !createForm.doctor_id }"
+                >
+                  <option value="">{{ t('appointments.select') }}</option>
+                  <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
+                    {{ doctor.full_name }}
+                  </option>
+                </select>
+              </div>
+
+              <!-- Date and Time - two columns -->
+              <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ t('appointments.patient') }} <span class="text-red-500">*</span>
-                  </label>
-                  <select
-                    v-model="createForm.patient_id"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                    :class="{ 'border-red-300': createError && !createForm.patient_id }"
-                  >
-                    <option value="">{{ t('appointments.select') }}</option>
-                    <option v-for="patient in availablePatients" :key="patient.id" :value="patient.id">
-                      {{ patient.full_name }} ({{ patient.phone }})
-                    </option>
-                  </select>
-                  <p v-if="availablePatients.length === 0 && !isAdmin" class="mt-1 text-xs text-amber-600">
-                    {{ t('appointments.noPatientsAvailable') }}
-                  </p>
-                </div>
-                <div v-if="isAdmin">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ t('appointments.doctor') }} <span class="text-red-500">*</span>
-                  </label>
-                  <select
-                    v-model="createForm.doctor_id"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                    :class="{ 'border-red-300': createError && !createForm.doctor_id }"
-                  >
-                    <option value="">{{ t('appointments.select') }}</option>
-                    <option v-for="doctor in doctors" :key="doctor.id" :value="doctor.id">
-                      {{ doctor.full_name }}
-                    </option>
-                  </select>
-                </div>
-                <div v-else class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                  <label class="block text-xs font-medium text-gray-500 mb-1">{{ t('appointments.doctor') }}</label>
-                  <p class="text-sm font-semibold text-gray-700">{{ currentDoctorName }}</p>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
                     {{ t('appointments.date') }} <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="createForm.date"
                     type="date"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     :class="{ 'border-red-300': createError && !createForm.date }"
                     :min="new Date().toISOString().split('T')[0]"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
+                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
                     {{ t('appointments.startTime') }} <span class="text-red-500">*</span>
                   </label>
                   <input
                     v-model="createForm.start_time"
                     type="time"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     :class="{ 'border-red-300': createError && !createForm.start_time }"
                   />
                 </div>
+              </div>
+
+              <!-- Duration -->
+              <div>
+                <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                  {{ t('appointments.duration') }} (min)
+                </label>
+                <input
+                  v-model.number="createForm.duration_minutes"
+                  type="number"
+                  min="10"
+                  step="5"
+                  value="30"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+              </div>
+
+              <!-- Service + Price (two columns) -->
+              <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">
-                    {{ t('appointments.duration') }} (min)
+                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                    {{ t('appointments.service') }}
                   </label>
-                  <input
-                    v-model.number="createForm.duration_minutes"
-                    type="number"
-                    min="10"
-                    step="5"
-                    placeholder="30"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.service') }}</label>
                   <input
                     v-model="createForm.service_name"
                     type="text"
                     :placeholder="t('appointments.servicePlaceholder')"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.price') }} (so'm)</label>
+                  <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                    {{ t('appointments.price') }}
+                  </label>
                   <input
                     v-model.number="createForm.price"
                     type="number"
                     min="0"
                     step="1000"
                     placeholder="0"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.room') }}</label>
-                  <input
-                    v-model="createForm.room"
-                    type="text"
-                    :placeholder="t('appointments.roomPlaceholder')"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                  />
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.channel') }}</label>
-                  <input
-                    v-model="createForm.channel"
-                    type="text"
-                    :placeholder="t('appointments.channelPlaceholder')"
-                    class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   />
                 </div>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('appointments.notes') }}</label>
-                <textarea v-model="createForm.notes" rows="3" class="w-full px-3 py-2 border rounded-lg"></textarea>
-              </div>
-              <div v-if="createError" class="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg p-2">
+
+              <!-- Error message -->
+              <div v-if="createError" class="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-2.5 py-1.5">
                 {{ createError }}
               </div>
             </div>
-            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-100 flex-shrink-0 bg-gray-50">
+
+            <!-- Footer -->
+            <div class="flex items-center justify-end gap-2 p-4 border-t border-gray-100 bg-gray-50">
               <button
                 @click="closeCreateModal"
-                class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 {{ t('appointments.cancel') }}
               </button>
               <button
                 @click="createAppointment"
                 :disabled="loading"
-                class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+                class="px-5 py-2 text-sm font-medium text-white bg-gradient-to-r from-primary-500 to-cyan-600 rounded-lg shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span v-if="loading" class="inline-flex items-center gap-2">
-                  <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <span v-if="loading" class="inline-flex items-center gap-1.5">
+                  <svg class="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  {{ t('appointments.saving') }}
+                  <span>{{ t('appointments.saving') }}</span>
                 </span>
                 <span v-else>{{ t('appointments.save') }}</span>
               </button>
@@ -641,7 +623,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
@@ -649,6 +631,12 @@ import { usePatientsStore } from '@/stores/patients'
 import { useToast } from '@/composables/useToast'
 import * as visitsApi from '@/api/visitsApi'
 import { createPayment, getPaymentsByVisitId } from '@/api/paymentsApi'
+import {
+  sendAppointmentConfirmed,
+  sendAppointmentCanceled,
+  sendDebtReminder,
+  sendTelegramNotification
+} from '@/api/telegramApi'
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 import MainLayout from '@/layouts/MainLayout.vue'
 import {
@@ -732,10 +720,56 @@ const statusTarget = ref(null)
 const statusValue = ref('')
 
 const openActionMenuId = ref(null)
+const actionMenuStyle = ref({})
+const actionMenuButtonRefs = ref({})
 
-const toggleActionMenu = (visitId) => {
-  openActionMenuId.value = openActionMenuId.value === visitId ? null : visitId
+const ACTION_MENU_WIDTH = 192
+const ACTION_MENU_ESTIMATED_HEIGHT = 280
+const ACTION_MENU_GAP = 8
+
+const setActionMenuButtonRef = (visitId, el) => {
+  if (el) {
+    actionMenuButtonRefs.value[visitId] = el
+    return
+  }
+  delete actionMenuButtonRefs.value[visitId]
 }
+
+const updateActionMenuPosition = (visitId) => {
+  const targetButton = actionMenuButtonRefs.value[visitId]
+  if (!targetButton) return
+
+  const rect = targetButton.getBoundingClientRect()
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+
+  let left = rect.right - ACTION_MENU_WIDTH
+  left = Math.max(ACTION_MENU_GAP, Math.min(left, viewportWidth - ACTION_MENU_WIDTH - ACTION_MENU_GAP))
+
+  const spaceBelow = viewportHeight - rect.bottom - ACTION_MENU_GAP
+  const spaceAbove = rect.top - ACTION_MENU_GAP
+  const openUp = spaceBelow < ACTION_MENU_ESTIMATED_HEIGHT && spaceAbove > spaceBelow
+
+  let top = openUp ? rect.top - ACTION_MENU_ESTIMATED_HEIGHT - 4 : rect.bottom + 4
+  top = Math.max(ACTION_MENU_GAP, Math.min(top, viewportHeight - ACTION_MENU_ESTIMATED_HEIGHT - ACTION_MENU_GAP))
+
+  actionMenuStyle.value = {
+    left: `${left}px`,
+    top: `${top}px`
+  }
+}
+
+const toggleActionMenu = async (visitId) => {
+  if (openActionMenuId.value === visitId) {
+    closeActionMenu()
+    return
+  }
+
+  openActionMenuId.value = visitId
+  await nextTick()
+  updateActionMenuPosition(visitId)
+}
+
 const closeActionMenu = () => {
   openActionMenuId.value = null
 }
@@ -743,7 +777,13 @@ const closeActionMenu = () => {
 const onDocumentClick = (e) => {
   if (!openActionMenuId.value) return
   if (e.target.closest('.action-menu-wrap')) return
+  if (e.target.closest('.action-menu-panel')) return
   closeActionMenu()
+}
+
+const onMenuViewportChange = () => {
+  if (!openActionMenuId.value) return
+  updateActionMenuPosition(openActionMenuId.value)
 }
 
 const doctors = computed(() => doctorsStore.items)
@@ -797,13 +837,13 @@ const dateRange = computed(() => {
   if (viewMode.value === 'day') {
     return { start: toISODate(base), end: toISODate(base) }
   }
-  
+
   if (viewMode.value === 'week') {
     const start = startOfWeek(base)
     const end = addDays(start, 6)
     return { start: toISODate(start), end: toISODate(end) }
   }
-  
+
   // Month
   const start = new Date(base.getFullYear(), base.getMonth(), 1)
   const end = new Date(base.getFullYear(), base.getMonth() + 1, 0)
@@ -1020,6 +1060,13 @@ const createAppointment = async () => {
       channel: createForm.value.channel,
       updated_by: getActorLabel()
     })
+    // Avtomatik Telegram: qabul tasdiqlandi
+    const appointmentDateStr = `${formatDate(createForm.value.date)} ${createForm.value.start_time || ''}`
+    await sendAppointmentConfirmed({
+      patientId: createForm.value.patient_id,
+      appointmentDate: appointmentDateStr,
+      doctorName: doctor?.full_name || ''
+    })
     toast.success(t('appointments.toastCreated'))
     closeCreateModal()
     await loadVisits()
@@ -1060,6 +1107,8 @@ const applyReschedule = async () => {
   }
 
   try {
+    const newDateStr = formatDate(rescheduleForm.value.date)
+    const newTimeStr = rescheduleForm.value.start_time || ''
     for (const visit of rescheduleTargets.value) {
       await visitsApi.updateVisit(visit.id, {
         date: rescheduleForm.value.date,
@@ -1069,6 +1118,12 @@ const applyReschedule = async () => {
         channel: rescheduleForm.value.channel,
         notes: visit.notes,
         updated_by: getActorLabel()
+      })
+      // Avtomatik Telegram: qabul qayta belgilandi
+      const msg = `📅 Qabulingiz qayta belgilandi.\n\nSana: ${newDateStr}\nVaqt: ${newTimeStr}\n\nIltimos, yangi vaqtda keling.`
+      await sendTelegramNotification({
+        patientId: visit.patient_id,
+        message: msg
       })
     }
     toast.success(t('appointments.toastRescheduled'))
@@ -1083,6 +1138,13 @@ const applyReschedule = async () => {
 const updateStatus = async (visit, status) => {
   try {
     await visitsApi.updateVisit(visit.id, { status, updated_by: getActorLabel() })
+    if (status === 'completed_paid' || status === 'completed_debt') {
+      await patientsStore.editPatient(visit.patient_id, { status: 'completed' })
+    }
+    // Avtomatik Telegram: qabul bekor qilindi
+    if (status === 'cancelled') {
+      await sendAppointmentCanceled({ patientId: visit.patient_id, reason: '' })
+    }
     await loadVisits()
   } catch (error) {
     console.error('Failed to update status:', error)
@@ -1108,8 +1170,18 @@ const completeVisit = async () => {
     }
 
     await visitsApi.updateVisit(completeTarget.value.id, updateData)
+      // Bemor statusini 'completed' qilish (visit yakunlanganda)
+      await patientsStore.editPatient(completeTarget.value.patient_id, { status: 'completed' })
     if (paidAmount && paidAmount > 0) {
       await syncPayment(completeTarget.value, paidAmount)
+    }
+    // Avtomatik Telegram: qarz qolganda qarz eslatmasi
+    if (debt > 0) {
+      await sendDebtReminder({
+        patientId: completeTarget.value.patient_id,
+        amount: debt,
+        dueDate: ''
+      })
     }
     toast.success(t('appointments.toastCompleted'))
     closeCompleteModal()
@@ -1146,8 +1218,15 @@ const syncPayment = async (visit, paidAmount) => {
 
 const bulkUpdateStatus = async (status) => {
   try {
+    const toCancel = status === 'cancelled' ? visits.value.filter(v => selectedIds.value.includes(v.id)) : []
     for (const id of selectedIds.value) {
       await visitsApi.updateVisit(id, { status, updated_by: getActorLabel() })
+    }
+    // Avtomatik Telegram: bulk bekor qilishda har bir bemorga xabar
+    if (status === 'cancelled') {
+      for (const visit of toCancel) {
+        await sendAppointmentCanceled({ patientId: visit.patient_id, reason: '' })
+      }
     }
     clearSelected()
     await loadVisits()
@@ -1282,7 +1361,7 @@ const setToday = () => {
 const shiftDate = (direction) => {
   const base = new Date(selectedDate.value)
   if (Number.isNaN(base.getTime())) return
-  
+
   let delta = 1
   if (viewMode.value === 'week') delta = 7
   if (viewMode.value === 'month') {
@@ -1290,7 +1369,7 @@ const shiftDate = (direction) => {
     selectedDate.value = toISODate(newDate)
     return
   }
-  
+
   const newDate = addDays(base, delta * direction)
   selectedDate.value = toISODate(newDate)
 }
@@ -1429,6 +1508,8 @@ const getActorLabel = () => {
 
 onMounted(async () => {
   document.addEventListener('click', onDocumentClick)
+  window.addEventListener('resize', onMenuViewportChange)
+  window.addEventListener('scroll', onMenuViewportChange, true)
   const patientLoad = isAdmin.value
     ? patientsStore.fetchPatients()
     : (doctorId.value ? patientsStore.fetchPatientsByDoctor(doctorId.value) : patientsStore.fetchPatients())
@@ -1442,6 +1523,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', onDocumentClick)
+  window.removeEventListener('resize', onMenuViewportChange)
+  window.removeEventListener('scroll', onMenuViewportChange, true)
 })
 
 watch([viewMode, selectedDate], loadVisits)

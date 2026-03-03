@@ -10,6 +10,35 @@ import { mergeClinicQuery } from '@/lib/supabaseClinicFallback'
 
 const TABLE = 'patients'
 
+const normalizeNullableDateField = (value) => {
+  if (value === null || value === undefined) return null
+  if (typeof value !== 'string') return value
+  const trimmed = value.trim()
+  return trimmed === '' ? null : trimmed
+}
+
+const normalizePatientPayload = (payload) => {
+  const normalized = { ...payload }
+  const dateFields = ['birth_date', 'last_visit', 'next_appointment']
+
+  dateFields.forEach(field => {
+    if (Object.prototype.hasOwnProperty.call(normalized, field)) {
+      normalized[field] = normalizeNullableDateField(normalized[field])
+    }
+  })
+
+  if (Object.prototype.hasOwnProperty.call(normalized, 'doctor_id')) {
+    const doctorId = normalized.doctor_id
+    if (doctorId === '' || doctorId === null || doctorId === undefined) {
+      normalized.doctor_id = null
+    } else {
+      normalized.doctor_id = Number(doctorId)
+    }
+  }
+
+  return normalized
+}
+
 export const listPatients = async () => {
   try {
     const cid = await getCurrentClinicId()
@@ -70,7 +99,7 @@ export const createPatient = async ({
   address = null,
   doctor_id = null,
   doctor_name = null,
-  status = 'active',
+  status = 'waiting',
   notes = null,
   createFirstVisit = true
 }) => {
@@ -81,14 +110,14 @@ export const createPatient = async ({
     const now = new Date().toISOString()
     const id = await generateId()
 
-    const newPatient = {
+    const newPatient = normalizePatientPayload({
       id,
       full_name,
       phone,
       birth_date: birth_date || null,
       gender: gender || null,
       address: address || null,
-      doctor_id: doctor_id ? Number(doctor_id) : null,
+      doctor_id,
       doctor_name: doctor_name || null,
       status,
       notes: notes || null,
@@ -97,7 +126,7 @@ export const createPatient = async ({
       clinic_id: cid,
       created_at: now,
       updated_at: now
-    }
+    })
 
     const result = await supabasePost(TABLE, newPatient)
     const created = result && result[0]
@@ -131,10 +160,10 @@ export const updatePatient = async (id, payload) => {
   try {
     const cid = await getCurrentClinicId()
     if (!cid) throw new Error('Klinika tanlanmagan. Kirish qaytadan tekshirilsin.')
-    const updateData = {
+    const updateData = normalizePatientPayload({
       ...payload,
       updated_at: new Date().toISOString()
-    }
+    })
 
     // Remove undefined values
     Object.keys(updateData).forEach(key => {
@@ -150,7 +179,12 @@ export const updatePatient = async (id, payload) => {
     console.log('✅ Patient updated:', result[0])
     return result && result[0] ? result[0] : null
   } catch (error) {
-    console.error('❌ Failed to update patient:', error)
+    console.error('❌ Failed to update patient:', {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      status: error?.status
+    })
     throw error
   }
 }

@@ -3,41 +3,41 @@
     <!-- Summary cards + Actions: mobil — kartalar 2x2, tugmalar pastda; desktop — bir qatorda -->
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
       <div class="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 flex-1 min-w-0">
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
-          <p class="text-xs text-slate-500">{{ t('patientPayments.totalPayments') }}</p>
-          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-slate-900 truncate" :title="formatCurrency(totalPayments)">{{ formatCurrency(totalPayments) }}</p>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.totalPayments') }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-primary-600" :title="formatCurrency(totalPayments)">{{ formatCurrency(totalPayments) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
-          <p class="text-xs text-slate-500">{{ t('patientPayments.refunds') }}</p>
-          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-rose-600 truncate">{{ formatCurrency(totalRefunds) }}</p>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.refunds') }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-rose-600">{{ formatCurrency(totalRefunds) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
-          <p class="text-xs text-slate-500">{{ t('patientPayments.netIncome') }}</p>
-          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-emerald-600 truncate">{{ formatCurrency(netIncome) }}</p>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.netIncome') }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-emerald-600">{{ formatCurrency(netIncome) }}</p>
         </div>
-        <div class="rounded-xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
-          <p class="text-xs text-slate-500">{{ t('patientPayments.totalServices') }}</p>
-          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-semibold text-slate-900 truncate" :title="formatCurrency(totalServices)">{{ formatCurrency(totalServices) }}</p>
+        <div class="rounded-xl border border-gray-200 bg-white p-3 sm:p-4 shadow-sm">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">{{ t('patientPayments.totalServices') }}</p>
+          <p class="mt-1 sm:mt-2 text-base sm:text-lg font-bold text-gray-900" :title="formatCurrency(totalServices)">{{ formatCurrency(totalServices) }}</p>
         </div>
       </div>
 
-      <!-- Desktop: tugmalar o'ngda -->
+      <!-- Desktop: tugmalar — To'lov qo'shish asosiy harakat -->
       <div class="hidden md:flex items-center gap-2 shrink-0 ml-4">
         <button
           v-if="canManagePayments"
-          class="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors"
-          @click="openDiscountModal"
-        >
-          <TagIcon class="w-5 h-5" />
-          {{ t('patientPayments.addDiscount') }}
-        </button>
-        <button
-          v-if="canManagePayments"
-          class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
+          class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 shadow-md transition-colors"
           @click="openCreateModal"
         >
           <BanknotesIcon class="w-5 h-5" />
           {{ t('patientPayments.addPayment') }}
+        </button>
+        <button
+          v-if="canManagePayments"
+          class="inline-flex items-center gap-2 rounded-lg border border-violet-300 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors"
+          @click="openDiscountModal"
+        >
+          <TagIcon class="w-5 h-5" />
+          {{ t('patientPayments.addDiscount') }}
         </button>
         <button
           v-if="canManagePayments && hasIncompleteVisits"
@@ -49,21 +49,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-          {{ completingAll ? t('patientPayments.completing') : (t('patientPayments.yakunlash') || 'Yakunlash') }}
+          {{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}
         </button>
       </div>
 
-      <!-- Mobil: Chegirma va To'lov — katta, barmoq uchun qulay, aniq ierarxiya -->
+      <!-- Mobil: To'lov qo'shish birinchi — asosiy harakat -->
       <div v-if="canManagePayments" class="md:hidden space-y-3">
         <div class="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl border-2 border-violet-300 bg-violet-50 px-4 py-3.5 text-sm font-semibold text-violet-700 active:bg-violet-100 active:scale-[0.98] transition-all shadow-sm"
-            @click="openDiscountModal"
-          >
-            <TagIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
-            <span class="truncate">{{ t('patientPayments.addDiscount') }}</span>
-          </button>
           <button
             type="button"
             class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary-500 to-cyan-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md active:scale-[0.98] active:shadow-lg transition-all"
@@ -71,6 +63,14 @@
           >
             <BanknotesIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
             <span class="truncate">{{ t('patientPayments.addPayment') }}</span>
+          </button>
+          <button
+            type="button"
+            class="touch-target-lg inline-flex items-center justify-center gap-2 rounded-xl border-2 border-violet-300 bg-violet-50 px-4 py-3.5 text-sm font-semibold text-violet-700 active:bg-violet-100 active:scale-[0.98] transition-all shadow-sm"
+            @click="openDiscountModal"
+          >
+            <TagIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+            <span class="truncate">{{ t('patientPayments.addDiscount') }}</span>
           </button>
         </div>
         <button
@@ -83,13 +83,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
           </svg>
           <div v-else class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-          <span>{{ completingAll ? t('patientPayments.completing') : (t('patientPayments.yakunlash') || 'Yakunlash') }}</span>
+          <span>{{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}</span>
         </button>
       </div>
     </div>
 
-    <div class="overflow-x-auto rounded-xl border border-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
+    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
             <th class="px-4 py-3">{{ t('patientPayments.date') }}</th>
@@ -270,6 +270,7 @@ import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, ge
 import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
 import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
 import { listInventoryConsumptionsByVisitId, listInventoryItems } from '@/api/inventoryApi'
+import { updatePatient } from '@/api/patientsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
 import { useToast } from '@/composables/useToast'
 
@@ -283,6 +284,8 @@ const props = defineProps({
     required: true
   }
 })
+
+const emit = defineEmits(['update-status'])
 
 const payments = ref([])
 const loading = ref(false)
@@ -383,10 +386,10 @@ const getVisitConsumptionsTotal = async (visitId) => {
 const hasIncompleteVisits = computed(() => {
   // Agar xizmatlar mavjud bo'lsa va to'lovlar bo'lmasa, yakunlash tugmasi ko'rinishi kerak
   if (totalServices.value > 0 && payments.value.length === 0) return true
-  
+
   // Yoki yakunlanmagan tashriflar bo'lsa
-  return visits.value.some(v => 
-    v.status === 'in_progress' || 
+  return visits.value.some(v =>
+    v.status === 'in_progress' ||
     v.status === 'completed_debt' ||
     (v.status === 'completed_paid' && (Number(v.debt_amount) || 0) > 0)
   )
@@ -496,12 +499,12 @@ const loadAll = async () => {
 
 const completeAllVisits = async () => {
   if (!window.confirm(t('patientPayments.confirmCompleteAll') || 'Barcha tashriflarni yakunlashni tasdiqlaysizmi?')) return
-  
+
   completingAll.value = true
   try {
     const doctorId = authStore.user?.id || null
     const result = await completeAllPatientVisits(props.patientId, doctorId)
-    
+
     if (result.success) {
       toast.success(t('patientPayments.toastAllCompleted') || `Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
       await loadAll() // Ma'lumotlarni yangilash
@@ -619,6 +622,7 @@ const savePayment = async () => {
     }
     await loadPayments()
     await syncVisitStatusIfFullyPaid(visitId)
+    await loadVisits() // Visitlar refresh qilish — bemor statusini hisoblash uchun kerak
     closeModal()
   } catch (error) {
     console.error('Failed to save payment:', error)
@@ -626,7 +630,7 @@ const savePayment = async () => {
   }
 }
 
-// To'lov to'liq bo'lsa visitni "To'liq yakunlangan" qilish (faqat admin to'lov qilgach)
+// To'lov to'liq bo'lsa visitni "To'liq yakunlangan" qilish va bemor statusini yangilash
 const syncVisitStatusIfFullyPaid = async (visitId) => {
   try {
     const visit = await getVisitById(visitId)
@@ -634,7 +638,29 @@ const syncVisitStatusIfFullyPaid = async (visitId) => {
     const price = Number(visit.price)
     const paid = Number(visit.paid_amount) || 0
     if (price > 0 && paid >= price) {
+      // Visitni completed_paid qilish
       await updateVisit(visitId, { status: 'completed_paid', debt_amount: null })
+
+      // Bemor statusini yangilash — agar barcha tashriflar to'liq to'langan bo'lsa "completed"ga o'tkazish
+      try {
+        const allVisits = visits.value.filter(v => Number(v.patient_id) === Number(props.patientId))
+        const hasRemainingDebt = allVisits.some(v =>
+          v.status === 'completed_debt' ||
+          (v.status !== 'completed_paid' && v.status !== 'cancelled' && v.status !== 'no_show')
+        )
+
+        if (!hasRemainingDebt) {
+          // Bemor barcha to'lovlarni qilgan — statusini "completed"ga o'tkazish
+          await updatePatient(props.patientId, {
+            status: 'completed',
+            last_visit: new Date().toISOString().split('T')[0]
+          })
+          // Parent'ni yangilash haqida xabar berish
+          emit('update-status', 'completed')
+        }
+      } catch (e) {
+        console.warn('Failed to update patient status after payment:', e)
+      }
     }
   } catch (e) {
     console.warn('syncVisitStatusIfFullyPaid:', e)
