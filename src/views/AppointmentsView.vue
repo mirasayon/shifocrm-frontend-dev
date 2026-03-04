@@ -20,44 +20,73 @@
 
       <!-- Filters - Clean layout -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 space-y-3">
-        <!-- View mode + Date navigation (single row) -->
-        <div class="flex flex-col md:flex-row md:items-center gap-3">
-          <!-- Day, Week, Month toggle -->
-          <div class="grid grid-cols-3 gap-2 flex-1 md:flex-none">
+        <!-- View mode selector: List, Schedule or Calendar -->
+        <div class="flex items-center justify-between">
+          <div class="grid grid-cols-3 gap-2 md:gap-3 md:flex-none">
             <button
-              @click="viewMode = 'day'; setToday()"
+              @click="displayMode = 'list'"
               class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
-              :class="viewMode === 'day' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              :class="displayMode === 'list' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              {{ t('appointments.viewDay') }}
+              {{ t('appointments.viewList') || 'Ro\'yxat' }}
             </button>
             <button
-              @click="viewMode = 'week'; setToday()"
+              @click="displayMode = 'calendar'"
               class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
-              :class="viewMode === 'week' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              :class="displayMode === 'calendar' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              {{ t('appointments.viewWeek') }}
+              {{ t('appointments.viewSchedule') || 'Kalender' }}
             </button>
             <button
-              @click="viewMode = 'month'; setToday()"
+              @click="displayMode = 'schedule'"
               class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
-              :class="viewMode === 'month' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              :class="displayMode === 'schedule' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
             >
-              {{ t('appointments.viewMonth') }}
+              {{ t('appointments.viewSchedule') || 'Stollar' }}
             </button>
           </div>
+        </div>
 
-          <!-- Date picker + navigation buttons -->
-          <div class="flex items-center gap-2">
-            <button
-              @click="shiftDate(-1)"
-              class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              :title="t('appointments.previous')"
-            >
-              <ChevronLeftIcon class="w-5 h-5" />
-            </button>
-            <input
-              v-model="selectedDate"
+        <!-- List view controls -->
+        <div v-if="displayMode === 'list'" class="space-y-3">
+          <!-- View mode + Date navigation (single row) -->
+          <div class="flex flex-col md:flex-row md:items-center gap-3">
+            <!-- Day, Week, Month toggle -->
+            <div class="grid grid-cols-3 gap-2 flex-1 md:flex-none">
+              <button
+                @click="viewMode = 'day'; setToday()"
+                class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
+                :class="viewMode === 'day' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              >
+                {{ t('appointments.viewDay') }}
+              </button>
+              <button
+                @click="viewMode = 'week'; setToday()"
+                class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
+                :class="viewMode === 'week' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              >
+                {{ t('appointments.viewWeek') }}
+              </button>
+              <button
+                @click="viewMode = 'month'; setToday()"
+                class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
+                :class="viewMode === 'month' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
+              >
+                {{ t('appointments.viewMonth') }}
+              </button>
+            </div>
+
+            <!-- Date picker + navigation buttons -->
+            <div class="flex items-center gap-2">
+              <button
+                @click="shiftDate(-1)"
+                class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                :title="t('appointments.previous')"
+              >
+                <ChevronLeftIcon class="w-5 h-5" />
+              </button>
+              <input
+                v-model="selectedDate"
               type="date"
               class="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
@@ -120,10 +149,11 @@
         <div class="text-xs text-gray-500 px-1">
           📅 {{ dateRangeLabel }}
         </div>
+        </div>
       </div>
 
-      <!-- Bulk Actions -->
-      <div v-if="selectedIds.length > 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
+      <!-- Bulk Actions (List view only) -->
+      <div v-if="displayMode === 'list' && selectedIds.length > 0" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center gap-3">
         <span class="text-sm font-medium text-amber-800">
           {{ selectedIds.length }} {{ t('appointments.selected') }}
         </span>
@@ -170,21 +200,23 @@
         </button>
       </div>
 
-      <!-- Appointments list - streamlined for desktop doctors -->
-      <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-visible">
-        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900">{{ t('appointments.listTitle') }}</h2>
-            <p class="text-sm text-gray-500">{{ filteredVisits.length }} {{ t('appointments.totalAppointments') }}</p>
+      <!-- Display: List or Schedule -->
+      <div v-if="displayMode === 'list'">
+        <!-- Appointments list - streamlined for desktop doctors -->
+        <div class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-visible">
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{{ t('appointments.listTitle') }}</h2>
+              <p class="text-sm text-gray-500">{{ filteredVisits.length }} {{ t('appointments.totalAppointments') }}</p>
+            </div>
           </div>
-        </div>
 
-        <div class="overflow-x-auto overflow-y-visible">
-          <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-200">
-              <tr class="text-left text-xs font-semibold text-gray-600">
-                <th class="px-4 py-3 w-12"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
-                <th class="px-4 py-3 w-24">{{ t('appointments.date') }}</th>
+          <div class="overflow-x-auto overflow-y-visible">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 border-b border-gray-200">
+                <tr class="text-left text-xs font-semibold text-gray-600">
+                  <th class="px-4 py-3 w-12"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
+                  <th class="px-4 py-3 w-24">{{ t('appointments.date') }}</th>
                 <th class="px-4 py-3 w-20">{{ t('appointments.time') }}</th>
                 <th class="px-4 py-3 flex-1">{{ t('appointments.patient') }}</th>
                 <th v-if="isAdmin" class="px-4 py-3 w-32">{{ t('appointments.doctor') }}</th>
@@ -311,7 +343,26 @@
           </table>
         </div>
       </div>
-    </div>
+      </div>
+
+      <!-- Schedule view (Doctor calendar grid) -->
+      <div v-else-if="displayMode === 'schedule'">
+        <DoctorScheduleView
+          :selected-date="selectedDate"
+          @update:selected-date="selectedDate = $event"
+          @update-status="handleStatusUpdate"
+          @open-payment="openCompleteModal"
+        />
+      </div>
+
+      <!-- Calendar list view -->
+      <div v-else-if="displayMode === 'calendar'">
+        <CalendarListView
+          :selected-date="selectedDate"
+          @update:selected-date="selectedDate = $event"
+          @open-payment="openCompleteModal"
+        />
+      </div>
 
     <!-- Create Appointment Modal - Simplified -->
     <Teleport to="body">
@@ -639,6 +690,8 @@ import {
 } from '@/api/telegramApi'
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 import MainLayout from '@/layouts/MainLayout.vue'
+import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
+import CalendarListView from '@/components/appointments/CalendarListView.vue'
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -672,6 +725,7 @@ const visits = ref([])
 // Kunlik/Haftalik/Oylik filtrlash
 const viewMode = ref('day')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
+const displayMode = ref('list') // 'list' or 'schedule'
 
 const searchQuery = ref('')
 const selectedDoctor = ref('')
@@ -1150,6 +1204,15 @@ const updateStatus = async (visit, status) => {
     console.error('Failed to update status:', error)
     toast.error(t('appointments.errorStatus'))
   }
+}
+
+const handleStatusUpdate = async (appointmentId) => {
+  // Appointment ID bo'yicha status yangilash (Schedule view'dan chaqiriladi)
+  const appointment = visits.value.find(v => v.id === appointmentId)
+  if (!appointment) return
+
+  // Qabula chiqarish
+  await updateStatus(appointment, 'in_progress')
 }
 
 const completeVisit = async () => {

@@ -300,6 +300,8 @@
     "viewWeek": "Неделя",
     "viewMonth": "Месяц",
     "searchPlaceholder": "Имя пациента, телефон, MED ID...",
+    "viewList": "Список",
+    "viewSchedule": "Расписание",
     "allDoctors": "Все врачи",
     "allStatuses": "Все статусы",
     "servicePlaceholder": "Название услуги...",
