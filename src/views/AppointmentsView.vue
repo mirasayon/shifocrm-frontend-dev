@@ -20,16 +20,9 @@
 
       <!-- Filters - Clean layout -->
       <div class="bg-white rounded-2xl shadow-card border border-gray-100 p-4 space-y-3">
-        <!-- View mode selector: Today, List, or Schedule -->
+        <!-- View mode selector: List or Schedule -->
         <div class="flex items-center justify-between">
-          <div class="grid grid-cols-3 gap-2 md:gap-3 md:flex-none">
-            <button
-              @click="displayMode = 'today'"
-              class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
-              :class="displayMode === 'today' ? 'bg-gradient-to-r from-primary-500 to-cyan-600 text-white border-primary-500' : 'border-gray-200 hover:bg-gray-50 text-gray-700'"
-            >
-              {{ $t('Bugun') || 'Bugun' }}
-            </button>
+          <div class="grid grid-cols-2 gap-2 md:gap-3 md:flex-none">
             <button
               @click="displayMode = 'list'"
               class="px-3 py-2 text-sm font-medium rounded-lg border transition-all"
@@ -343,14 +336,6 @@
           </table>
         </div>
       </div>
-      </div>
-
-      <!-- Today's Appointments view (filtered up to 12:00) -->
-      <div v-else-if="displayMode === 'today'">
-        <TodaysAppointmentsView
-          @update-status="handleStatusUpdate"
-          @open-payment="openCompleteModal"
-        />
       </div>
 
       <!-- Schedule view (Doctor calendar grid) -->
@@ -689,7 +674,6 @@ import {
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 import MainLayout from '@/layouts/MainLayout.vue'
 import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue'
-import TodaysAppointmentsView from '@/components/appointments/TodaysAppointmentsView.vue'
 import {
   PlusIcon,
   MagnifyingGlassIcon,

@@ -182,23 +182,27 @@
                 v-for="day in week"
                 :key="day.dateStr"
                 :class="[
-                  'px-3 py-2 border-r border-gray-200 h-32 align-top cursor-pointer hover:bg-primary-50 transition-colors',
+                  'px-4 py-3 border-r border-gray-200 h-40 align-top',
                   day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                 ]"
-                @click="day.isCurrentMonth && (currentDate = day.dateStr, viewMode = 'day')"
               >
                 <div :class="['text-sm font-semibold mb-2', day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400']">
                   {{ day.dayNum }}
                 </div>
-                <div v-if="day.isCurrentMonth" class="space-y-1.5 text-xs">
-                  <template v-for="doctor in visibleDoctors" :key="`${day.dateStr}-${doctor.id}`">
-                    <div v-if="getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length > 0" class="flex items-center justify-between">
-                      <span class="font-medium text-gray-700 truncate">{{ doctor.full_name }}</span>
-                      <span class="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary-500 text-white font-bold text-xs">
-                        {{ getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length }}
-                      </span>
-                    </div>
-                  </template>
+                <div v-if="day.isCurrentMonth" class="space-y-1 text-xs">
+                  <div
+                    v-for="(appt, idx) in getAppointmentsForDateMonth(day.dateStr)"
+                    :key="appt.id"
+                    :class="['p-1 rounded cursor-pointer hover:shadow-md truncate', getStatusBadgeClass(appt.status)]"
+                    :title="`${appt.patient_name} - ${appt.doctor_name} (${appt.start_time})`"
+                    @click="$emit('open-payment', appt.id)"
+                  >
+                    <div class="font-medium truncate">{{ appt.patient_name }}</div>
+                    <div class="text-xs opacity-75">{{ appt.doctor_name }}</div>
+                  </div>
+                  <div v-if="getAppointmentsForDateMonth(day.dateStr).length > 3" class="text-xs text-gray-500 mt-1">
+                    +{{ getAppointmentsForDateMonth(day.dateStr).length - 3 }} boshqa
+                  </div>
                 </div>
               </td>
             </tr>
