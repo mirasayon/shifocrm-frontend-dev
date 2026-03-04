@@ -78,7 +78,7 @@
 
     <!-- Schedule grid - Day view -->
     <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden">
-      <div class="flex overflow-x-auto">
+      <div class="flex overflow-x-auto relative">
         <!-- Left: Time column -->
         <TimeGrid
           :start-hour="9"
@@ -87,7 +87,14 @@
         />
 
         <!-- Right: Doctor columns -->
-        <div class="flex flex-1 overflow-x-auto">
+        <div class="flex flex-1 overflow-x-auto relative">
+          <!-- Current time indicator (in scrollable area) -->
+          <CurrentTimeIndicator
+            :start-hour="9"
+            :end-hour="18"
+            class="absolute left-0 right-0 z-10"
+          />
+
           <DoctorColumn
             v-for="doctor in visibleDoctors"
             :key="doctor.id"
@@ -136,19 +143,13 @@
               <td
                 v-for="day in weekDays"
                 :key="`${doctor.id}-${day.dateStr}`"
-                class="px-2 py-2 border-l border-gray-200 text-center min-w-[150px]"
+                class="px-2 py-3 border-l border-gray-200 text-center min-w-[120px] bg-gradient-to-br from-blue-50 to-transparent hover:from-blue-100 cursor-pointer transition-colors"
+                @click="currentDate = day.dateStr; viewMode = 'day'"
               >
-                <div class="space-y-1">
-                  <div
-                    v-for="appt in getAppointmentsForDoctorAndDate(doctor.id, day.dateStr)"
-                    :key="appt.id"
-                    :class="['text-xs p-2 rounded cursor-pointer hover:shadow-md transition-shadow', getStatusBadgeClass(appt.status)]"
-                    @click="$emit('open-payment', appt.id)"
-                  >
-                    <div class="font-medium">{{ appt.patient_name }}</div>
-                    <div class="text-xs opacity-75">{{ appt.start_time }}</div>
-                  </div>
+                <div class="text-2xl font-bold text-primary-600">
+                  {{ getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length }}
                 </div>
+                <div class="text-xs text-gray-500 mt-1">uchrashuvlar</div>
               </td>
             </tr>
           </tbody>
@@ -181,27 +182,23 @@
                 v-for="day in week"
                 :key="day.dateStr"
                 :class="[
-                  'px-4 py-3 border-r border-gray-200 h-40 align-top',
+                  'px-3 py-2 border-r border-gray-200 h-32 align-top cursor-pointer hover:bg-primary-50 transition-colors',
                   day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                 ]"
+                @click="day.isCurrentMonth && (currentDate = day.dateStr, viewMode = 'day')"
               >
                 <div :class="['text-sm font-semibold mb-2', day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400']">
                   {{ day.dayNum }}
                 </div>
-                <div v-if="day.isCurrentMonth" class="space-y-1 text-xs">
-                  <div
-                    v-for="(appt, idx) in getAppointmentsForDateMonth(day.dateStr)"
-                    :key="appt.id"
-                    :class="['p-1 rounded cursor-pointer hover:shadow-md truncate', getStatusBadgeClass(appt.status)]"
-                    :title="`${appt.patient_name} - ${appt.doctor_name} (${appt.start_time})`"
-                    @click="$emit('open-payment', appt.id)"
-                  >
-                    <div class="font-medium truncate">{{ appt.patient_name }}</div>
-                    <div class="text-xs opacity-75">{{ appt.doctor_name }}</div>
-                  </div>
-                  <div v-if="getAppointmentsForDateMonth(day.dateStr).length > 3" class="text-xs text-gray-500 mt-1">
-                    +{{ getAppointmentsForDateMonth(day.dateStr).length - 3 }} boshqa
-                  </div>
+                <div v-if="day.isCurrentMonth" class="space-y-1.5 text-xs">
+                  <template v-for="doctor in visibleDoctors" :key="`${day.dateStr}-${doctor.id}`">
+                    <div v-if="getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length > 0" class="flex items-center justify-between">
+                      <span class="font-medium text-gray-700 truncate">{{ doctor.full_name }}</span>
+                      <span class="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full bg-primary-500 text-white font-bold text-xs">
+                        {{ getAppointmentsForDoctorAndDate(doctor.id, day.dateStr).length }}
+                      </span>
+                    </div>
+                  </template>
                 </div>
               </td>
             </tr>
@@ -231,6 +228,7 @@ import * as visitsApi from '@/api/visitsApi'
 import { getVisitStatusLabel, getVisitStatusColors } from '@/constants/visitStatus'
 import TimeGrid from './TimeGrid.vue'
 import DoctorColumn from './DoctorColumn.vue'
+import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
 
 const props = defineProps({
   selectedDate: {

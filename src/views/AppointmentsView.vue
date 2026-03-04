@@ -707,7 +707,7 @@ const visits = ref([])
 // Kunlik/Haftalik/Oylik filtrlash
 const viewMode = ref('day')
 const selectedDate = ref(new Date().toISOString().split('T')[0])
-const displayMode = ref('list') // 'list' or 'schedule'
+const displayMode = ref('schedule') // 'list' or 'schedule' - Klinika uchun default 'schedule'
 
 const searchQuery = ref('')
 const selectedDoctor = ref('')
