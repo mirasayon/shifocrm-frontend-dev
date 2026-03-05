@@ -1,59 +1,65 @@
 <template>
   <div
-    class="appointment-block absolute left-0.5 right-0.5 rounded-lg border border-l-4 p-2 text-xs cursor-pointer transition-all hover:shadow-md group"
+    class="appointment-block absolute left-0.5 right-0.5 rounded-lg border border-l-4 p-1 sm:p-2 text-xs cursor-pointer transition-all hover:shadow-md group"
     :class="appointmentClasses"
     :style="blockStyle"
-    :title="`${appointment.patient_name} - ${formatTime(appointment.start_time)} to ${formatTime(endTime)}`"
+    :title="`${appointment.patient_name} - ${localStartTime} to ${localEndTime}`"
+    @click="handleBlockClick"
   >
-    <!-- Bemor ismi -->
-    <div class="font-semibold text-gray-900 line-clamp-1">{{ appointment.patient_name || 'N/A' }}</div>
+    <!-- Bemor ismi (mobile: abbreviated, desktop: full) -->
+    <div class="font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1 text-xs sm:text-sm">{{ appointment.patient_name || 'N/A' }}</div>
 
-    <!-- Vaqt -->
-    <div class="text-gray-600 mt-0.5">{{ formatTime(appointment.start_time) }}</div>
+    <!-- Vaqt (responsive) -->
+    <div class="text-gray-600 mt-0.5 flex items-center gap-0.5 sm:gap-1 text-xs">
+      <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 10.586V7z" clip-rule="evenodd" />
+      </svg>
+      <span class="line-clamp-1">{{ localStartTime }} - {{ localEndTime }}</span>
+    </div>
 
-    <!-- Status badge -->
+    <!-- Status badge (responsive) -->
     <div class="flex items-center gap-1 mt-1">
-      <span class="inline-block px-2 py-0.5 rounded text-xs font-medium" :class="statusBadgeClass">
+      <span class="inline-block px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium line-clamp-1" :class="statusBadgeClass">
         {{ getStatusLabel(appointment.status) }}
       </span>
     </div>
 
-    <!-- To'lov badge -->
-    <div v-if="paymentStatus" class="flex items-center gap-1 mt-1">
-      <span class="inline-block px-2 py-0.5 rounded text-xs font-medium" :class="paymentBadgeClass">
+    <!-- To'lov badge (mobile: hidden if small) -->
+    <div v-if="paymentStatus" class="hidden sm:flex items-center gap-1 mt-1">
+      <span class="inline-block px-1.5 sm:px-2 py-0.5 rounded text-xs font-medium" :class="paymentBadgeClass">
         {{ paymentStatus }}
       </span>
     </div>
 
-    <!-- Quick actions (show on hover) -->
-    <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <!-- Quick actions (show on hover, hidden on small mobile) -->
+    <div class="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 flex gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
       <button
         v-if="canStartAppointment"
         @click.stop="handleStartAppointment"
-        class="p-1 rounded bg-amber-500 text-white hover:bg-amber-600"
+        class="p-0.5 sm:p-1 rounded bg-amber-500 text-white hover:bg-amber-600 text-xs"
         title="Qabulda"
       >
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
         </svg>
       </button>
       <button
         v-if="canCompleteAppointment"
         @click.stop="handleCompleteAppointment"
-        class="p-1 rounded bg-emerald-500 text-white hover:bg-emerald-600"
+        class="p-0.5 sm:p-1 rounded bg-emerald-500 text-white hover:bg-emerald-600 text-xs"
         title="Tugadi"
       >
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="currentColor" viewBox="0 0 20 20">
           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
         </svg>
       </button>
       <button
         v-if="appointment.status === 'in_progress' || appointment.status === 'completed_paid' || appointment.status === 'completed_debt'"
         @click.stop="handlePaymentModal"
-        class="p-1 rounded bg-blue-500 text-white hover:bg-blue-600"
+        class="p-0.5 sm:p-1 rounded bg-blue-500 text-white hover:bg-blue-600 text-xs"
         title="To'lov"
       >
-        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+        <svg class="w-2.5 h-2.5 sm:w-3 sm:h-3" fill="currentColor" viewBox="0 0 20 20">
           <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
         </svg>
       </button>
@@ -64,6 +70,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { extractLocalTime, timeStringToMinutes, getTimeDuration } from '@/utils/timezoneUtils'
 
 const props = defineProps({
   appointment: {
@@ -76,35 +83,53 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update-status', 'open-payment'])
+const emit = defineEmits(['update-status', 'open-payment', 'open-patient-modal'])
 
 const { t } = useI18n()
 
+// Extract local time from appointment (handles UTC conversion)
+const localStartTime = computed(() => {
+  return extractLocalTime(props.appointment.start_time)
+})
+
+const localEndTime = computed(() => {
+  if (props.appointment.end_time) {
+    return extractLocalTime(props.appointment.end_time)
+  }
+  // Calculate from duration
+  const duration = props.appointment.duration_minutes || 60
+  const startMin = timeStringToMinutes(localStartTime.value)
+  const endMin = startMin + duration
+  const endH = Math.floor(endMin / 60)
+  const endM = endMin % 60
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+})
+
+// Duration hisoblash: end_time yoki duration_minutes dan
+const getDuration = () => {
+  if (props.appointment.duration_minutes && props.appointment.duration_minutes > 0) {
+    return props.appointment.duration_minutes
+  }
+  if (props.appointment.end_time && props.appointment.start_time) {
+    return getTimeDuration(localStartTime.value, localEndTime.value)
+  }
+  return 60
+}
+
 // Duration (minutlar) -> height (px) o'tkazish
 const appointmentHeight = computed(() => {
-  const duration = props.appointment.duration_minutes || 30
+  const duration = getDuration()
   return (duration / 30) * props.slotHeightPx
 })
 
 // Block style: top va height
 const blockStyle = computed(() => {
-  const startMinutes = timeStringToMinutes(props.appointment.start_time || '09:00')
+  const startMinutes = timeStringToMinutes(localStartTime.value)
   const topOffset = (startMinutes / 30) * props.slotHeightPx
   return {
     top: `${topOffset}px`,
     height: `${appointmentHeight.value}px`
   }
-})
-
-// End time hisoblash
-const endTime = computed(() => {
-  if (!props.appointment.start_time) return '09:30'
-  const duration = props.appointment.duration_minutes || 30
-  const [hours, minutes] = props.appointment.start_time.split(':').map(Number)
-  const totalMinutes = hours * 60 + minutes + duration
-  const endHours = Math.floor(totalMinutes / 60)
-  const endMinutes = totalMinutes % 60
-  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
 })
 
 // Status orqali rang
@@ -157,17 +182,7 @@ const canCompleteAppointment = computed(() => {
 })
 
 // Utilities
-const timeStringToMinutes = (timeStr) => {
-  if (!timeStr) return 0
-  const [h, m] = timeStr.split(':').map(Number)
-  return h * 60 + m
-}
-
-const formatTime = (timeStr) => {
-  if (!timeStr) return 'N/A'
-  return timeStr
-}
-
+// Utilities
 const getStatusLabel = (status) => {
   const statusMap = {
     'pending': t('appointments.statusPending') || 'Kutmoqda',
@@ -182,6 +197,11 @@ const getStatusLabel = (status) => {
 }
 
 // Emit events
+const handleBlockClick = () => {
+  // Block click - open patient details modal
+  emit('open-patient-modal', props.appointment)
+}
+
 const handleStartAppointment = () => {
   emit('update-status', 'in_progress')
 }

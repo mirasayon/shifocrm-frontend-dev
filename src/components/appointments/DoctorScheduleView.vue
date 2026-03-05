@@ -95,7 +95,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            
+
             <!-- Dropdown -->
             <div
               v-if="showDoctorDropdown"
@@ -146,38 +146,45 @@
       <!-- Schedule Canvas -->
       <div class="flex flex-1 overflow-hidden">
         <!-- Left: Time column (sticky) -->
-        <div class="w-20 bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto sticky left-0 z-40">
-          <div v-for="hour in hours" :key="hour.time" class="text-right pr-3 py-0 text-xs font-medium text-gray-600 border-b border-gray-100" :style="{ height: slotHeightPx + 'px' }">
+        <div class="bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto sticky left-0 z-40" :class="timeColumnWidth">
+          <div v-for="hour in hours" :key="hour.time" class="text-right pr-1 sm:pr-2 md:pr-3 py-0 text-xs font-medium text-gray-600 border-b border-gray-100" :style="{ height: slotHeightPx + 'px' }">
             <div class="pt-1">{{ hour.time }}</div>
           </div>
         </div>
 
-        <!-- Right: Doctor columns -->
-        <div class="flex flex-1 overflow-x-auto overflow-y-auto">
+        <!-- Right: Doctor columns (horizontal scroll) -->
+        <div class="flex flex-1 overflow-x-auto overflow-y-auto bg-white">
           <div
             v-for="doctor in displayedDoctors"
             :key="doctor.id"
-            class="flex-1 min-w-[250px] border-r border-gray-200 relative"
+            class="border-r border-gray-200 relative flex-shrink-0"
+            :style="{ width: doctorColumnWidth }"
           >
-            <!-- Doctor header -->
-            <div class="sticky top-0 z-30 bg-white border-b border-gray-200 px-3 py-2">
-              <div class="text-sm font-semibold text-gray-900">{{ doctor.full_name }}</div>
-              <div class="text-xs text-gray-500">{{ doctor.specialization || 'Shifokor' }}</div>
+            <!-- Doctor header (sticky top) -->
+            <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3">
+              <div class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2">{{ doctor.full_name }}</div>
+              <div class="text-xs text-gray-500 line-clamp-1">{{ doctor.specialization || 'Shifokor' }}</div>
             </div>
 
-            <!-- Time slots background -->
+            <!-- Time slots area -->
             <div class="relative">
-              <!-- Background grid -->
-              <div v-for="hour in hours" :key="`bg-${doctor.id}-${hour.time}`" class="border-b border-gray-100 bg-gradient-to-b from-blue-50 via-white to-white hover:bg-blue-50 cursor-pointer transition-colors" :style="{ height: slotHeightPx + 'px' }" @click="handleSlotClick(doctor.id, hour.time)"></div>
+              <!-- Background grid (clickable) -->
+              <div
+                v-for="hour in hours"
+                :key="`bg-${doctor.id}-${hour.time}`"
+                class="border-b border-gray-100 bg-gradient-to-b from-blue-50 via-white to-white hover:bg-blue-100 cursor-pointer transition-colors active:bg-blue-200"
+                :style="{ height: slotHeightPx + 'px' }"
+                @click="handleSlotClick(doctor.id, hour.time)"
+              />
 
-              <!-- Current time indicator for this column -->
+              <!-- Current time indicator -->
               <CurrentTimeIndicator
                 :start-hour="9"
                 :end-hour="18"
                 class="absolute left-0 right-0 z-20 pointer-events-none"
               />
 
-              <!-- Appointments for this doctor -->
+              <!-- Appointments (draggable) -->
               <div class="absolute inset-0 pointer-events-none">
                 <div
                   v-for="appt in getAppointmentsForDoctor(doctor.id)"
@@ -191,6 +198,7 @@
                     :slot-height-px="slotHeightPx"
                     @update-status="handleStatusUpdate"
                     @open-payment="handleOpenPayment"
+                    @open-patient-modal="handleOpenPatientModal"
                   />
                 </div>
               </div>
@@ -310,6 +318,16 @@
     <div v-if="loading" class="text-center py-6 text-gray-500">
       {{ t('appointments.loading') }}
     </div>
+
+    <!-- Patient Modal -->
+    <PatientModalInfo
+      :appointment="selectedPatientAppointment"
+      :is-open="patientModalOpen"
+      @close="patientModalOpen = false"
+      @update-status="updateAppointmentStatus"
+      @open-payment="handleOpenPayment"
+      @call="handleCallPatient"
+    />
   </div>
 </template>
 
@@ -322,6 +340,7 @@ import * as visitsApi from '@/api/visitsApi'
 import { getVisitStatusColors } from '@/constants/visitStatus'
 import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
 import AppointmentBlock from './AppointmentBlock.vue'
+import PatientModalInfo from './PatientModalInfo.vue'
 
 const props = defineProps({
   selectedDate: {
@@ -338,6 +357,8 @@ const doctorsStore = useDoctorsStore()
 
 const loading = ref(false)
 const appointments = ref([])
+const patientModalOpen = ref(false)
+const selectedPatientAppointment = ref(null)
 const slotHeightPx = 60 // 30 minut = 60px
 const viewMode = ref('day') // 'day', 'week', 'month'
 const currentDate = ref(props.selectedDate)
@@ -347,6 +368,9 @@ const doctorDropdownRef = ref(null) // Ref for dropdown element
 const draggingAppointment = ref(null)
 const dragStartY = ref(0)
 const dragStartTime = ref('')
+
+// Responsive breakpoints (mobile, tablet, desktop)
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
 const dayNames = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Yak']
 
@@ -376,6 +400,20 @@ const hours = computed(() => {
 })
 
 // Doktor uchun faqat o'z appointmentlari, admin uchun barchasi
+// Responsive column widths
+const timeColumnWidth = computed(() => {
+  // Mobile: 3.5rem (56px), Tablet: 5rem (80px), Desktop: 5rem (80px)
+  if (windowWidth.value < 640) return 'w-14' // 56px
+  return 'w-20' // 80px
+})
+
+const doctorColumnWidth = computed(() => {
+  // Mobile: 280px, Tablet: 320px, Desktop: 360px
+  if (windowWidth.value < 640) return '280px' // Mobile
+  if (windowWidth.value < 1024) return '320px' // Tablet
+  return '360px' // Desktop
+})
+
 const visibleDoctors = computed(() => {
   const allDoctors = doctorsStore.items || []
   if (authStore.userRole === 'admin') {
@@ -554,15 +592,35 @@ const loadAppointments = async () => {
       endDate = lastDay.toISOString().split('T')[0]
     }
 
+    let visits = []
     if (authStore.userRole === 'admin') {
-      appointments.value = await visitsApi.getVisitsByDateRange(startDate, endDate)
+      visits = await visitsApi.getVisitsByDateRange(startDate, endDate)
     } else if (authStore.user?.id) {
-      appointments.value = await visitsApi.getVisitsByDoctorAndDateRange(
+      visits = await visitsApi.getVisitsByDoctorAndDateRange(
         authStore.user.id,
         startDate,
         endDate
       )
     }
+
+    // Shifokor va bemor ma'lumotlarini qo'shish
+    // TEMP: start_time va end_time database'da yo'q bo'lgani uchun placeholder qo'shamiz
+    appointments.value = visits.map(visit => {
+      const doctor = visibleDoctors.value.find(d => Number(d.id) === Number(visit.doctor_id))
+
+      // Temporary: agar start_time yo'q bo'lsa, default qiymat ishlatish
+      const startTime = visit.start_time || '09:00'
+      const endTime = visit.end_time || '10:00'
+
+      return {
+        ...visit,
+        start_time: startTime,
+        end_time: endTime,
+        duration_minutes: visit.duration_minutes || 60,
+        doctor_name: doctor?.full_name || 'N/A',
+        specialization: doctor?.specialization || 'N/A'
+      }
+    })
   } catch (error) {
     console.error('Failed to load appointments:', error)
     appointments.value = []
@@ -572,13 +630,27 @@ const loadAppointments = async () => {
 }
 
 // Status o'zgartirish
-const handleStatusUpdate = async ({ appointmentId, newStatus }) => {
+const handleStatusUpdate = async (newStatus) => {
+  if (!selectedPatientAppointment.value) return
   try {
-    await visitsApi.updateVisit(appointmentId, { status: newStatus })
+    await visitsApi.updateVisit(selectedPatientAppointment.value.id, { status: newStatus })
     await loadAppointments()
-    emit('update-status', appointmentId)
+    emit('update-status', selectedPatientAppointment.value.id)
   } catch (error) {
     console.error('Failed to update status:', error)
+  }
+}
+
+// Bemor modal'ini ochish
+const handleOpenPatientModal = (appointment) => {
+  selectedPatientAppointment.value = appointment
+  patientModalOpen.value = true
+}
+
+// Telefon qo'ng'iroq
+const handleCallPatient = (phone) => {
+  if (phone) {
+    window.location.href = `tel:${phone}`
   }
 }
 
@@ -597,10 +669,10 @@ const handleSlotClick = (doctorId, timeStr) => {
 }
 
 const openNewAppointmentModal = (doctorId, startTime) => {
-  emit('open-payment', null, { 
-    doctorId, 
-    startTime, 
-    date: currentDate.value 
+  emit('open-payment', null, {
+    doctorId,
+    startTime,
+    date: currentDate.value
   })
 }
 
@@ -610,7 +682,7 @@ const startDrag = (event, appt) => {
   draggingAppointment.value = appt
   dragStartY.value = event.clientY
   dragStartTime.value = appt.start_time
-  
+
   document.addEventListener('mousemove', handleDragMove)
   document.addEventListener('mouseup', handleDragEnd)
   document.body.style.cursor = 'grabbing'
@@ -618,20 +690,20 @@ const startDrag = (event, appt) => {
 
 const handleDragMove = (event) => {
   if (!draggingAppointment.value) return
-  
+
   const deltaY = event.clientY - dragStartY.value
   const deltaSlots = Math.round(deltaY / slotHeightPx)
-  
+
   if (deltaSlots !== 0) {
     const [h, m] = dragStartTime.value.split(':').map(Number)
     const newMinutes = h * 60 + m + (deltaSlots * 30)
     const newH = Math.floor(newMinutes / 60)
     const newM = newMinutes % 60
-    
+
     if (newH >= 9 && newH < 18) {
       const newTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`
       draggingAppointment.value.start_time = newTime
-      
+
       // Update end_time if exists
       if (draggingAppointment.value.end_time) {
         const [endH, endM] = draggingAppointment.value.end_time.split(':').map(Number)
@@ -641,7 +713,7 @@ const handleDragMove = (event) => {
         const newEndM = newEndMinutes % 60
         draggingAppointment.value.end_time = `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`
       }
-      
+
       dragStartY.value = event.clientY
       dragStartTime.value = newTime
     }
@@ -650,14 +722,14 @@ const handleDragMove = (event) => {
 
 const handleDragEnd = async () => {
   if (!draggingAppointment.value) return
-  
+
   try {
     // Update appointment via API
     await visitsApi.update(draggingAppointment.value.id, {
       start_time: draggingAppointment.value.start_time,
       end_time: draggingAppointment.value.end_time
     })
-    
+
     // Reload appointments
     await loadAppointments()
   } catch (error) {
@@ -680,11 +752,11 @@ const handleOpenPayment = (appointmentId) => {
 // Appointment'ning pixel position'ini hisoblash (start_time va end_time bo'yicha)
 const getAppointmentStyle = (appt) => {
   if (!appt.start_time) return {}
-  
+
   const [startH, startM] = appt.start_time.split(':').map(Number)
   const startMinutesFromDay = (startH - 9) * 60 + startM
   const topPx = (startMinutesFromDay / 30) * slotHeightPx
-  
+
   // Default duration 30 minutes agar end_time bo'lmasa
   let heightPx = slotHeightPx
   if (appt.end_time) {
@@ -695,7 +767,7 @@ const getAppointmentStyle = (appt) => {
   } else if (appt.duration_minutes) {
     heightPx = (appt.duration_minutes / 30) * slotHeightPx
   }
-  
+
   return {
     top: `${topPx}px`,
     height: `${heightPx}px`,
@@ -706,7 +778,19 @@ const getAppointmentStyle = (appt) => {
 // Watch current date va view mode
 watch([() => currentDate.value, () => viewMode.value], loadAppointments)
 
-onMounted(loadAppointments)
+// Window resize handler for responsive design
+const handleWindowResize = () => {
+  windowWidth.value = window.innerWidth
+}
+
+onMounted(() => {
+  loadAppointments()
+  window.addEventListener('resize', handleWindowResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleWindowResize)
+})
 </script>
 
 <style scoped>

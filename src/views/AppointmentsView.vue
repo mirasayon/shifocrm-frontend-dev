@@ -1002,8 +1002,8 @@ const openCompleteModal = (visit) => {
   completeError.value = ''
   completeTarget.value = visit
   completeForm.value = {
-    price: visit.price || null,
-    paid_amount: visit.paid_amount || null
+    price: visit?.price || null,
+    paid_amount: visit?.paid_amount || null
   }
   showCompleteModal.value = true
 }

@@ -33,10 +33,18 @@ const totalMinutes = computed(() => {
 
 const currentMinutes = computed(() => {
   const now = currentTime.value
-  const todayStart = new Date(now)
-  todayStart.setHours(startHour.value, 0, 0, 0)
-  const diffMs = now - todayStart
-  return Math.max(0, Math.min(diffMs / 60000, totalMinutes.value))
+  const hour = now.getHours()
+  const minute = now.getMinutes()
+
+  // Convert current time to minutes from start of day
+  const nowMinutes = hour * 60 + minute
+  const startMinutes = startHour.value * 60
+
+  // Calculate how many minutes into the working hours
+  const minutesIntoCurrent = nowMinutes - startMinutes
+
+  // Clamp between 0 and totalMinutes
+  return Math.max(0, Math.min(minutesIntoCurrent, totalMinutes.value))
 })
 
 const positionPercent = computed(() => {
