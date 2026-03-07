@@ -97,6 +97,25 @@
               </div>
             </div>
 
+            <!-- Treatment section -->
+            <div v-if="showTreatmentSection" class="border-t pt-6">
+              <h3 class="text-lg font-semibold text-gray-900 mb-4">Davolash bo'limi</h3>
+              <div class="p-4 bg-indigo-50 border border-indigo-200 rounded-lg space-y-2">
+                <div class="text-sm text-gray-700">
+                  <span class="font-semibold">Bemor:</span> {{ appointment.patient_name || 'N/A' }}
+                </div>
+                <div class="text-sm text-gray-700">
+                  <span class="font-semibold">ID:</span> {{ appointment.patient_id || 'N/A' }}
+                </div>
+                <div class="text-sm text-gray-700">
+                  <span class="font-semibold">Telefon:</span> {{ appointment.phone || 'N/A' }}
+                </div>
+                <div class="text-sm text-gray-700">
+                  <span class="font-semibold">Holat:</span> Davolanish jarayonida
+                </div>
+              </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="border-t pt-6 flex gap-3">
               <button
@@ -144,7 +163,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { extractLocalTime, timeStringToMinutes } from '@/utils/timezoneUtils'
 
@@ -162,6 +181,19 @@ const props = defineProps({
 const emit = defineEmits(['close', 'update-status', 'open-payment', 'call'])
 
 const { t } = useI18n()
+const treatmentSectionOpen = ref(false)
+
+watch(
+  () => props.appointment?.status,
+  (status) => {
+    treatmentSectionOpen.value = status === 'in_progress'
+  },
+  { immediate: true }
+)
+
+const showTreatmentSection = computed(() => {
+  return treatmentSectionOpen.value || props.appointment?.status === 'in_progress'
+})
 
 // Extract local time from appointment
 const localStartTime = computed(() => {
@@ -237,8 +269,11 @@ const getStatusLabel = (status) => {
 }
 
 const startAppointment = () => {
-  emit('update-status', 'in_progress')
-  closeModal()
+  treatmentSectionOpen.value = true
+  emit('update-status', {
+    appointmentId: props.appointment.id,
+    status: 'in_progress'
+  })
 }
 
 const completeAppointment = () => {

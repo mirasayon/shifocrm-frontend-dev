@@ -1,8 +1,7 @@
 <template>
   <div
-    class="appointment-block absolute left-0.5 right-0.5 rounded-lg border border-l-4 p-1 sm:p-2 text-xs cursor-pointer transition-all hover:shadow-md group"
-    :class="appointmentClasses"
-    :style="blockStyle"
+    :class="[blockClasses, appointmentClasses]"
+    :style="resolvedBlockStyle"
     :title="`${appointment.patient_name} - ${localStartTime} to ${localEndTime}`"
     @click="handleBlockClick"
   >
@@ -80,6 +79,10 @@ const props = defineProps({
   slotHeightPx: {
     type: Number,
     default: 60 // 30 minut = 60px
+  },
+  positionedByParent: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -122,14 +125,30 @@ const appointmentHeight = computed(() => {
   return (duration / 30) * props.slotHeightPx
 })
 
+const blockClasses = computed(() => {
+  const base = 'appointment-block rounded-lg border border-l-4 p-1 sm:p-2 text-xs cursor-pointer transition-all hover:shadow-md group'
+  if (props.positionedByParent) {
+    return `${base} relative w-full h-full`
+  }
+  return `${base} absolute left-0.5 right-0.5`
+})
+
 // Block style: top va height
 const blockStyle = computed(() => {
   const startMinutes = timeStringToMinutes(localStartTime.value)
-  const topOffset = (startMinutes / 30) * props.slotHeightPx
+  const dayStartMinutes = 9 * 60
+  const topOffset = ((startMinutes - dayStartMinutes) / 30) * props.slotHeightPx
   return {
     top: `${topOffset}px`,
     height: `${appointmentHeight.value}px`
   }
+})
+
+const resolvedBlockStyle = computed(() => {
+  if (props.positionedByParent) {
+    return { height: '100%' }
+  }
+  return blockStyle.value
 })
 
 // Status orqali rang
@@ -203,15 +222,21 @@ const handleBlockClick = () => {
 }
 
 const handleStartAppointment = () => {
-  emit('update-status', 'in_progress')
+  emit('update-status', {
+    appointmentId: props.appointment.id,
+    status: 'in_progress'
+  })
 }
 
 const handleCompleteAppointment = () => {
-  emit('update-status', 'completed_paid')
+  emit('update-status', {
+    appointmentId: props.appointment.id,
+    status: 'completed_paid'
+  })
 }
 
 const handlePaymentModal = () => {
-  emit('open-payment')
+  emit('open-payment', props.appointment.id)
 }
 </script>
 

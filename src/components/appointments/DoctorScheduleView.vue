@@ -196,6 +196,7 @@
                   <AppointmentBlock
                     :appointment="appt"
                     :slot-height-px="slotHeightPx"
+                    :positioned-by-parent="true"
                     @update-status="handleStatusUpdate"
                     @open-payment="handleOpenPayment"
                     @open-patient-modal="handleOpenPatientModal"
@@ -324,7 +325,7 @@
       :appointment="selectedPatientAppointment"
       :is-open="patientModalOpen"
       @close="patientModalOpen = false"
-      @update-status="updateAppointmentStatus"
+      @update-status="handleStatusUpdate"
       @open-payment="handleOpenPayment"
       @call="handleCallPatient"
     />
@@ -336,6 +337,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
+import { usePatientsStore } from '@/stores/patients'
 import * as visitsApi from '@/api/visitsApi'
 import { getVisitStatusColors } from '@/constants/visitStatus'
 import CurrentTimeIndicator from './CurrentTimeIndicator.vue'
@@ -354,6 +356,7 @@ const emit = defineEmits(['update:selectedDate', 'update-status', 'open-payment'
 const { t } = useI18n()
 const authStore = useAuthStore()
 const doctorsStore = useDoctorsStore()
+const patientsStore = usePatientsStore()
 
 const loading = ref(false)
 const appointments = ref([])
@@ -430,6 +433,14 @@ const displayedDoctors = computed(() => {
     return visibleDoctors.value
   }
   return visibleDoctors.value.filter(d => selectedDoctorIds.value.includes(d.id))
+})
+
+const patientByIdMap = computed(() => {
+  const map = new Map()
+  for (const patient of patientsStore.items || []) {
+    map.set(Number(patient.id), patient)
+  }
+  return map
 })
 
 // Tanlangan kun uchun appointmentlar (day view)
@@ -607,6 +618,7 @@ const loadAppointments = async () => {
     // TEMP: start_time va end_time database'da yo'q bo'lgani uchun placeholder qo'shamiz
     appointments.value = visits.map(visit => {
       const doctor = visibleDoctors.value.find(d => Number(d.id) === Number(visit.doctor_id))
+      const patient = patientByIdMap.value.get(Number(visit.patient_id))
 
       // Temporary: agar start_time yo'q bo'lsa, default qiymat ishlatish
       const startTime = visit.start_time || '09:00'
@@ -618,7 +630,13 @@ const loadAppointments = async () => {
         end_time: endTime,
         duration_minutes: visit.duration_minutes || 60,
         doctor_name: doctor?.full_name || 'N/A',
-        specialization: doctor?.specialization || 'N/A'
+        specialization: doctor?.specialization || 'N/A',
+        patient_name: patient?.full_name || visit.patient_name || `#${visit.patient_id}`,
+        phone: patient?.phone || visit.phone || '',
+        med_id: patient?.med_id || visit.med_id || '',
+        diagnosis: patient?.diagnosis || visit.diagnosis || null,
+        patient_address: patient?.address || visit.patient_address || '',
+        patient_gender: patient?.gender || visit.patient_gender || ''
       }
     })
   } catch (error) {
@@ -631,11 +649,23 @@ const loadAppointments = async () => {
 
 // Status o'zgartirish
 const handleStatusUpdate = async (newStatus) => {
-  if (!selectedPatientAppointment.value) return
+  const appointmentId = typeof newStatus === 'object' ? newStatus.appointmentId : selectedPatientAppointment.value?.id
+  const statusToSet = typeof newStatus === 'object' ? newStatus.status : newStatus
+  if (!appointmentId || !statusToSet) return
+
+  const targetAppointment = appointments.value.find(a => Number(a.id) === Number(appointmentId))
+  if (!targetAppointment) return
+
   try {
-    await visitsApi.updateVisit(selectedPatientAppointment.value.id, { status: newStatus })
+    await visitsApi.updateVisit(targetAppointment.id, { status: statusToSet })
     await loadAppointments()
-    emit('update-status', selectedPatientAppointment.value.id)
+    if (selectedPatientAppointment.value?.id) {
+      const refreshed = appointments.value.find(a => Number(a.id) === Number(selectedPatientAppointment.value.id))
+      if (refreshed) {
+        selectedPatientAppointment.value = refreshed
+      }
+    }
+    emit('update-status', { appointmentId: targetAppointment.id, status: statusToSet })
   } catch (error) {
     console.error('Failed to update status:', error)
   }
@@ -725,7 +755,7 @@ const handleDragEnd = async () => {
 
   try {
     // Update appointment via API
-    await visitsApi.update(draggingAppointment.value.id, {
+    await visitsApi.updateVisit(draggingAppointment.value.id, {
       start_time: draggingAppointment.value.start_time,
       end_time: draggingAppointment.value.end_time
     })
@@ -785,6 +815,11 @@ const handleWindowResize = () => {
 
 onMounted(() => {
   loadAppointments()
+  if (authStore.userRole === 'admin') {
+    patientsStore.fetchPatients()
+  } else if (authStore.user?.id) {
+    patientsStore.fetchPatientsByDoctor(authStore.user.id)
+  }
   window.addEventListener('resize', handleWindowResize)
 })
 

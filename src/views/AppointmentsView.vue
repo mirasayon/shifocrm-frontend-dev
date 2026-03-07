@@ -344,7 +344,7 @@
           :selected-date="selectedDate"
           @update:selected-date="selectedDate = $event"
           @update-status="handleStatusUpdate"
-          @open-payment="openCompleteModal"
+          @open-payment="handleSchedulePaymentAction"
         />
       </div>
     </div>
@@ -999,6 +999,10 @@ const closeRescheduleModal = () => {
 }
 
 const openCompleteModal = (visit) => {
+  if (!visit || !visit.id) {
+    completeError.value = t('appointments.errorNotFound')
+    return
+  }
   completeError.value = ''
   completeTarget.value = visit
   completeForm.value = {
@@ -1006,6 +1010,31 @@ const openCompleteModal = (visit) => {
     paid_amount: visit?.paid_amount || null
   }
   showCompleteModal.value = true
+}
+
+const handleSchedulePaymentAction = (appointmentId, meta = null) => {
+  // Schedule'dan yangi appointment ochish
+  if (!appointmentId) {
+    openCreateModal()
+    if (meta?.doctorId != null) {
+      createForm.value.doctor_id = String(meta.doctorId)
+    }
+    if (meta?.date) {
+      createForm.value.date = meta.date
+    }
+    if (meta?.startTime) {
+      createForm.value.start_time = meta.startTime
+    }
+    return
+  }
+
+  // Mavjud appointment uchun complete/payment modal
+  const visit = visits.value.find(v => Number(v.id) === Number(appointmentId))
+  if (!visit) {
+    toast.error(t('appointments.errorNotFound'))
+    return
+  }
+  openCompleteModal(visit)
 }
 
 const closeCompleteModal = () => {
@@ -1056,12 +1085,14 @@ const createAppointment = async () => {
   }
   if (!createForm.value.date || !createForm.value.start_time) {
     createError.value = t('appointments.errorDateTimeRequired')
+    loading.value = false
     return
   }
 
   const durationMinutes = Number(createForm.value.duration_minutes)
   if (!Number.isFinite(durationMinutes) || durationMinutes <= 0) {
     createError.value = 'Davomiylik (min) to\'g\'ri bo\'lishi kerak.'
+    loading.value = false
     return
   }
   const endTime = buildEndTime(createForm.value.start_time, durationMinutes)
@@ -1188,13 +1219,19 @@ const updateStatus = async (visit, status) => {
   }
 }
 
-const handleStatusUpdate = async (appointmentId) => {
-  // Appointment ID bo'yicha status yangilash (Schedule view'dan chaqiriladi)
-  const appointment = visits.value.find(v => v.id === appointmentId)
+const handleStatusUpdate = async (payload) => {
+  let appointmentId = payload
+  let targetStatus = 'in_progress'
+
+  if (payload && typeof payload === 'object') {
+    appointmentId = payload.appointmentId
+    targetStatus = payload.status || 'in_progress'
+  }
+
+  const appointment = visits.value.find(v => Number(v.id) === Number(appointmentId))
   if (!appointment) return
 
-  // Qabula chiqarish
-  await updateStatus(appointment, 'in_progress')
+  await updateStatus(appointment, targetStatus)
 }
 
 const completeVisit = async () => {
