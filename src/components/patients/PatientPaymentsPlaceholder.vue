@@ -51,6 +51,15 @@
           <div v-else class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
           {{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}
         </button>
+        <button
+          v-if="canManagePayments && lastCompletionSummary"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-lg border border-sky-300 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100 transition-colors"
+          @click="printLastCompletion"
+        >
+          <PrinterIcon class="w-5 h-5" />
+          Pechat
+        </button>
       </div>
 
       <!-- Mobil: To'lov qo'shish birinchi — asosiy harakat -->
@@ -84,6 +93,15 @@
           </svg>
           <div v-else class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
           <span>{{ completingAll ? t('patientPayments.completing') : t('patientPayments.yakunlash') }}</span>
+        </button>
+        <button
+          v-if="lastCompletionSummary"
+          type="button"
+          class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-sky-300 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 active:bg-sky-100 active:scale-[0.99] transition-all"
+          @click="printLastCompletion"
+        >
+          <PrinterIcon class="w-5 h-5 shrink-0" aria-hidden="true" />
+          <span>Pechat</span>
         </button>
       </div>
     </div>
@@ -264,17 +282,21 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { TrashIcon, TagIcon, BanknotesIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, TagIcon, BanknotesIcon, PrinterIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
+import { useClinicStore } from '@/stores/clinic'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
 import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
 import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
 import { listInventoryConsumptionsByVisitId, listInventoryItems } from '@/api/inventoryApi'
 import { updatePatient } from '@/api/patientsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
+import { openPatientCompletionPrint } from '@/lib/patientCompletionPrint'
 import { useToast } from '@/composables/useToast'
+import { sendPatientCompletionSummary } from '@/api/telegramApi'
 
 const authStore = useAuthStore()
+const clinicStore = useClinicStore()
 const isAdmin = computed(() => authStore.userRole === 'admin')
 const canManagePayments = computed(() => ['admin', 'doctor', 'solo'].includes(authStore.userRole || ''))
 
@@ -282,6 +304,14 @@ const props = defineProps({
   patientId: {
     type: [String, Number],
     required: true
+  },
+  patientName: {
+    type: String,
+    default: ''
+  },
+  patientMedId: {
+    type: [String, Number],
+    default: ''
   }
 })
 
@@ -302,6 +332,7 @@ const isEditing = ref(false)
 const isDiscountMode = ref(false)
 const visitPreview = ref(null)
 const visitPreviewLoading = ref(false)
+const lastCompletionSummary = ref(null)
 
 const form = ref({
   id: null,
@@ -507,6 +538,30 @@ const completeAllVisits = async () => {
 
     if (result.success) {
       toast.success(t('patientPayments.toastAllCompleted') || `Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
+      lastCompletionSummary.value = result.summary || null
+
+      if (result.summary) {
+        const tg = await sendPatientCompletionSummary({
+          patientId: props.patientId,
+          doctorName: result.summary.doctorName,
+          visitDate: result.summary.visitDate,
+          services: result.summary.services,
+          discounts: result.summary.discounts,
+          totalBeforeDiscount: result.summary.totalBeforeDiscount,
+          totalDiscount: result.summary.totalDiscount,
+          totalAfterDiscount: result.summary.totalAfterDiscount,
+          paid: result.summary.paid,
+          remaining: result.summary.remaining
+        })
+        if (!tg.ok) {
+          console.warn('Telegram completion summary was not sent:', tg.error)
+        }
+
+        if (window.confirm('Yakuniy hisobotni pechat qilishni xohlaysizmi?')) {
+          printLastCompletion()
+        }
+      }
+
       await loadAll() // Ma'lumotlarni yangilash
     } else {
       toast.error(result.error || t('patientPayments.errorCompleteAll'))
@@ -516,6 +571,33 @@ const completeAllVisits = async () => {
     toast.error(t('patientPayments.errorCompleteAll'))
   } finally {
     completingAll.value = false
+  }
+}
+
+const printLastCompletion = () => {
+  if (!lastCompletionSummary.value) {
+    toast.error('Pechat uchun yakuniy hisobot topilmadi')
+    return
+  }
+
+  const summary = lastCompletionSummary.value
+  const printResult = openPatientCompletionPrint({
+    clinicName: clinicStore.displayName || 'SHIFOCRM',
+    patientName: props.patientName || `Bemor #${props.patientId}`,
+    patientMedId: props.patientMedId || '-',
+    doctorName: summary.doctorName,
+    visitDate: summary.visitDate,
+    services: summary.services,
+    discounts: summary.discounts,
+    totalBeforeDiscount: summary.totalBeforeDiscount,
+    totalDiscount: summary.totalDiscount,
+    totalAfterDiscount: summary.totalAfterDiscount,
+    paid: summary.paid,
+    remaining: summary.remaining
+  })
+
+  if (!printResult.ok) {
+    toast.error('Pechat oynasi bloklandi. Brauzerda pop-upga ruxsat bering.')
   }
 }
 

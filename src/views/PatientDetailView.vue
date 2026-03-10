@@ -145,7 +145,12 @@
 
           <!-- To'lovlar Tab -->
           <div v-else-if="activeTab === 'payments'">
-            <PatientPaymentsPlaceholder :patient-id="patient.id" @update-status="handlePaymentStatusUpdate" />
+            <PatientPaymentsPlaceholder
+              :patient-id="patient.id"
+              :patient-name="patient.full_name || ''"
+              :patient-med-id="patient.med_id || ''"
+              @update-status="handlePaymentStatusUpdate"
+            />
           </div>
 
           <!-- Davolash rejasi Tab -->
@@ -338,6 +343,7 @@ import PatientStatusBadge from '@/components/ui/PatientStatusBadge.vue'
 import VisitStatusBadge from '@/components/ui/VisitStatusBadge.vue'
 import { usePatientsStore } from '@/stores/patients'
 import { useAuthStore } from '@/stores/auth'
+import { useClinicStore } from '@/stores/clinic'
 import { useToast } from '@/composables/useToast'
 import { PATIENT_STATUSES, getPatientStatusLabel, normalizePatientStatus } from '@/constants/patientStatus'
 import { ArrowLeftIcon, ExclamationCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
@@ -345,6 +351,8 @@ import * as visitsApi from '@/api/visitsApi'
 import { completeAllPatientVisits } from '@/lib/completePatientVisits'
 import { getVisitServicesByPatientId } from '@/api/visitServicesApi'
 import { sendTelegramNotification } from '@/api/telegramApi'
+import { sendPatientCompletionSummary } from '@/api/telegramApi'
+import { openPatientCompletionPrint } from '@/lib/patientCompletionPrint'
 
 const toast = useToast()
 const { t } = useI18n()
@@ -353,6 +361,7 @@ const route = useRoute()
 const router = useRouter()
 const patientsStore = usePatientsStore()
 const authStore = useAuthStore()
+const clinicStore = useClinicStore()
 
 const patient = ref(null)
 const loading = ref(true)
@@ -467,6 +476,46 @@ const handleCompleteAll = async () => {
 
     if (result.success) {
       toast.success(`Muvaffaqiyatli yakunlandi: ${result.completed} ta tashrif`)
+
+      if (result.summary) {
+        const tg = await sendPatientCompletionSummary({
+          patientId: patient.value.id,
+          doctorName: result.summary.doctorName || patient.value.doctor_name || '',
+          visitDate: result.summary.visitDate,
+          services: result.summary.services,
+          discounts: result.summary.discounts,
+          totalBeforeDiscount: result.summary.totalBeforeDiscount,
+          totalDiscount: result.summary.totalDiscount,
+          totalAfterDiscount: result.summary.totalAfterDiscount,
+          paid: result.summary.paid,
+          remaining: result.summary.remaining
+        })
+        if (!tg.ok) {
+          console.warn('Telegram completion summary was not sent:', tg.error)
+        }
+
+        if (window.confirm('Yakuniy hisobotni pechat qilishni xohlaysizmi?')) {
+          const printResult = openPatientCompletionPrint({
+            clinicName: clinicStore.displayName || 'SHIFOCRM',
+            patientName: patient.value.full_name || `Bemor #${patient.value.id}`,
+            patientMedId: patient.value.med_id || '-',
+            doctorName: result.summary.doctorName || patient.value.doctor_name || '',
+            visitDate: result.summary.visitDate,
+            services: result.summary.services,
+            discounts: result.summary.discounts,
+            totalBeforeDiscount: result.summary.totalBeforeDiscount,
+            totalDiscount: result.summary.totalDiscount,
+            totalAfterDiscount: result.summary.totalAfterDiscount,
+            paid: result.summary.paid,
+            remaining: result.summary.remaining
+          })
+
+          if (!printResult.ok) {
+            toast.error('Pechat oynasi bloklandi. Brauzerda pop-upga ruxsat bering.')
+          }
+        }
+      }
+
       await Promise.all([
         loadLastVisit(patient.value.id),
         loadTotalDebt(patient.value.id),

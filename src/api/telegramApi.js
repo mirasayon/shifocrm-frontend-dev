@@ -238,6 +238,82 @@ export async function sendVisitCompleted({
 }
 
 /**
+ * Bemor bo'yicha yakuniy hisobot: barcha bajarilgan ishlar + barcha chegirmalar
+ * @param {Object} params
+ * @param {string|number} params.patientId
+ * @param {string} [params.doctorName]
+ * @param {string} [params.visitDate]
+ * @param {Array<{visitId:number,name:string,price:number,tooth?:string|number}>} [params.services]
+ * @param {Array<{visitId:number,amount:number,note?:string}>} [params.discounts]
+ * @param {number} [params.totalBeforeDiscount]
+ * @param {number} [params.totalDiscount]
+ * @param {number} [params.totalAfterDiscount]
+ * @param {number} [params.paid]
+ * @param {number} [params.remaining]
+ * @returns {Promise<{ok: boolean, error?: string}>}
+ */
+export async function sendPatientCompletionSummary({
+  patientId,
+  doctorName = '',
+  visitDate = '',
+  services = [],
+  discounts = [],
+  totalBeforeDiscount = 0,
+  totalDiscount = 0,
+  totalAfterDiscount = 0,
+  paid = 0,
+  remaining = 0
+}) {
+  try {
+    let message = `✅ Davolanish yakunlandi\n\n`
+    if (visitDate) message += `📅 Sana: ${visitDate}\n`
+    if (doctorName) message += `👨‍⚕️ Shifokor: ${doctorName}\n`
+    message += `\n━━━━━━━━━━━━━━━━━\n\n`
+
+    if (services.length > 0) {
+      message += `📋 Bajarilgan ishlar:\n\n`
+      services.forEach((service, index) => {
+        const toothInfo = service.tooth ? ` (tish ${service.tooth})` : ''
+        message += `${index + 1}. ${service.name || 'Xizmat'}${toothInfo}\n`
+        message += `   ${Number(service.price || 0).toLocaleString('uz-UZ')} so'm\n`
+      })
+      message += `\n`
+    }
+
+    if (discounts.length > 0) {
+      message += `🎁 Berilgan chegirmalar:\n\n`
+      discounts.forEach((discount, index) => {
+        const notePart = discount.note ? ` — ${discount.note}` : ''
+        message += `${index + 1}. #${discount.visitId} : ${Number(discount.amount || 0).toLocaleString('uz-UZ')} so'm${notePart}\n`
+      })
+      message += `\n`
+    }
+
+    message += `━━━━━━━━━━━━━━━━━\n\n`
+    message += `💰 Yakuniy hisob:\n`
+    message += `Jami xizmat narxi: ${Number(totalBeforeDiscount || 0).toLocaleString('uz-UZ')} so'm\n`
+    if (Number(totalDiscount || 0) > 0) {
+      message += `Chegirmalar jami: -${Number(totalDiscount || 0).toLocaleString('uz-UZ')} so'm\n`
+      message += `Chegirmadan keyin: ${Number(totalAfterDiscount || 0).toLocaleString('uz-UZ')} so'm\n`
+    }
+    message += `To'langan: ${Number(paid || 0).toLocaleString('uz-UZ')} so'm\n`
+    if (Number(remaining || 0) > 0) {
+      message += `Qolgan qarz: ${Number(remaining || 0).toLocaleString('uz-UZ')} so'm\n`
+    } else {
+      message += `Qarz: yo'q ✅\n`
+    }
+
+    return await sendTelegramNotification({
+      patientId: String(patientId),
+      message
+    })
+  } catch (error) {
+    console.warn('Telegram xabar yuborilmadi (sendPatientCompletionSummary):', error)
+    return { ok: false, error: error.message || 'UNKNOWN_ERROR' }
+  }
+}
+
+/**
  * Reja vaqtidan oldin eslatma (appointment avto eslatmasi)
  * @param {Object} params
  * @param {string} params.patientId

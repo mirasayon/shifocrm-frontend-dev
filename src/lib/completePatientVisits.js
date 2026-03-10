@@ -9,6 +9,15 @@ import { updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
 import { listInventoryConsumptionsByVisitId, listInventoryItems } from '@/api/inventoryApi'
 import { updatePatient } from '@/api/patientsApi'
 
+const DISCOUNT_NOTE_PREFIX = '[DISCOUNT]'
+
+const isDiscountPayment = (entry) => {
+  if (!entry) return false
+  if (entry.payment_type === 'refund' && entry.note && String(entry.note).includes(DISCOUNT_NOTE_PREFIX)) return true
+  if (entry.payment_type === 'adjustment' && Number(entry.amount) < 0) return true
+  return false
+}
+
 const parsePrice = (v) => {
   if (v == null) return 0
   const n = typeof v === 'string' ? parseFloat(String(v).replace(/\s|,/g, '')) : Number(v)
@@ -82,9 +91,19 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
     }
 
     let completedCount = 0
+    const allServicesDetailed = []
+    const allDiscountsDetailed = []
+    let totalBeforeDiscount = 0
+    let totalDiscount = 0
+    let totalPaid = 0
+    let totalRemaining = 0
+    let summaryDoctorName = ''
+    let summaryVisitDate = ''
 
     for (const visit of visitsToComplete) {
       const visitId = visit.id
+      summaryDoctorName = summaryDoctorName || visit.doctor_name || ''
+      summaryVisitDate = summaryVisitDate || visit.date || ''
 
       let servicesTotal = getVisitServicesTotal(visitId, services)
       if (!servicesTotal) {
@@ -97,13 +116,45 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
         }
       }
 
+      const byVisitServices = services
+        .filter(s => Number(s.visit_id) === Number(visitId))
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+
+      const seenTeeth = new Set()
+      for (const entry of byVisitServices) {
+        const toothId = entry.tooth_id
+        if (toothId == null) continue
+        const key = `t${toothId}`
+        if (seenTeeth.has(key)) continue
+        seenTeeth.add(key)
+        allServicesDetailed.push({
+          visitId,
+          name: entry.service_name || 'Xizmat',
+          price: parsePrice(entry.price),
+          tooth: toothId
+        })
+      }
+
       const consumptionsTotal = await getVisitConsumptionsTotal(visitId, inventoryItems)
       const totalPrice = servicesTotal + consumptionsTotal
       const targetPrice = totalPrice > 0 ? totalPrice : (Number(visit.price) || 0)
+      totalBeforeDiscount += targetPrice
 
       let netPaid = 0
       try {
         const existingPayments = await getPaymentsByVisitId(visitId)
+        const visitDiscounts = existingPayments.filter(isDiscountPayment)
+        const visitDiscountTotal = visitDiscounts.reduce((sum, entry) => sum + Math.abs(Number(entry.amount) || 0), 0)
+        totalDiscount += visitDiscountTotal
+
+        for (const discountEntry of visitDiscounts) {
+          allDiscountsDetailed.push({
+            visitId,
+            amount: Math.abs(Number(discountEntry.amount) || 0),
+            note: discountEntry.note ? String(discountEntry.note).replace(/^\s*\[DISCOUNT\]\s*/i, '').trim() : ''
+          })
+        }
+
         netPaid = existingPayments.reduce((sum, entry) => {
           const amount = Number(entry.amount) || 0
           return sum + (entry.payment_type === 'refund' ? -amount : amount)
@@ -129,6 +180,9 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
         }
       }
 
+      totalPaid += netPaid
+      totalRemaining += Math.max(0, targetPrice - netPaid)
+
       await updateVisit(visitId, {
         status: 'completed_paid',
         price: targetPrice || null,
@@ -145,7 +199,22 @@ export const completeAllPatientVisits = async (patientId, doctorId = null) => {
       console.warn('Failed to update patient status:', error)
     }
 
-    return { success: true, completed: completedCount }
+    return {
+      success: true,
+      completed: completedCount,
+      summary: {
+        patientId: Number(patientId),
+        doctorName: summaryDoctorName,
+        visitDate: summaryVisitDate,
+        services: allServicesDetailed,
+        discounts: allDiscountsDetailed,
+        totalBeforeDiscount,
+        totalDiscount,
+        totalAfterDiscount: Math.max(0, totalBeforeDiscount - totalDiscount),
+        paid: totalPaid,
+        remaining: totalRemaining
+      }
+    }
   } catch (error) {
     console.error('Failed to complete patient visits:', error)
     return { success: false, completed: 0, error: error.message || 'Xatolik yuz berdi' }

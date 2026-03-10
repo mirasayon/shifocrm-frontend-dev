@@ -81,7 +81,7 @@
           <div class="space-y-4 sm:space-y-6">
             <!-- Yuqori jag' -->
             <div class="flex justify-center">
-              <div class="odontogram-row flex items-start gap-1 sm:gap-2 md:gap-4">
+              <div class="odontogram-row flex items-start gap-2 sm:gap-3 md:gap-5">
                 <div class="flex gap-1 sm:gap-2">
                   <Tooth
                     v-for="id in upperRight"
@@ -110,7 +110,7 @@
 
             <!-- Pastki jag' -->
             <div class="flex justify-center">
-              <div class="odontogram-row flex items-start gap-1 sm:gap-2 md:gap-4">
+              <div class="odontogram-row flex items-start gap-2 sm:gap-3 md:gap-5">
                 <div class="flex gap-1 sm:gap-2">
                   <Tooth
                     v-for="id in lowerLeft"
@@ -486,8 +486,10 @@ const originalOdontogramData = ref(null)
 
 const upperRight = [18, 17, 16, 15, 14, 13, 12, 11]
 const upperLeft = [21, 22, 23, 24, 25, 26, 27, 28]
-const lowerLeft = [38, 37, 36, 35, 34, 33, 32, 31]
-const lowerRight = [41, 42, 43, 44, 45, 46, 47, 48]
+// User requested order:
+// 48 47 46 45 44 43 42 41 | 31 32 33 34 35 36 37 38
+const lowerLeft = [48, 47, 46, 45, 44, 43, 42, 41]
+const lowerRight = [31, 32, 33, 34, 35, 36, 37, 38]
 const toothIds = [...upperRight, ...upperLeft, ...lowerLeft, ...lowerRight]
 
 const teeth = ref(toothIds.map(id => ({ id, status: 'healthy', service_id: null })))
