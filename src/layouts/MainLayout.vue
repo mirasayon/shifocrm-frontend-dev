@@ -156,6 +156,8 @@ const pageTitle = computed(() => {
     '/patients': authStore.userRole === 'solo' ? t('patients.soloTitle') : t('patients.allPatients'),
     '/doctors': t('doctors.title'),
     '/appointments': t('appointments.title'),
+    '/leads': t('nav.leads'),
+    '/my-leads': t('nav.myLeads'),
     '/payments': t('payments.title'),
     '/services': t('services.title'),
     '/inventory': t('inventory.title'),
@@ -175,6 +177,8 @@ const pageSubtitle = computed(() => {
     '/patients': authStore.userRole === 'solo' ? t('patients.soloSubtitle') : t('patients.patientList'),
     '/doctors': t('doctors.doctorsList'),
     '/appointments': t('appointments.appointmentsCalendar'),
+    '/leads': t('leads.subtitle'),
+    '/my-leads': t('leads.subtitle'),
     '/payments': t('payments.financialReports'),
     '/services': t('services.servicePrices'),
     '/inventory': t('inventory.title'),
@@ -186,14 +190,6 @@ const pageSubtitle = computed(() => {
     '/doctor/profile': t('profile.personalInfo'),
   }
   return subtitles[route.path] || ''
-})
-
-const userInitials = computed(() => {
-  if (authStore.userRole === 'admin') return 'AD'
-  const name = authStore.user?.full_name
-  if (name) return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-  const email = authStore.userEmail || ''
-  return email.slice(0, 2).toUpperCase() || '??'
 })
 
 const handleLogout = () => {

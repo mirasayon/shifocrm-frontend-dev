@@ -129,6 +129,7 @@ import {
   CalendarDaysIcon,
   CreditCardIcon,
   ClipboardDocumentListIcon,
+  InboxIcon,
   ArchiveBoxIcon,
   ChartBarIcon,
   Cog6ToothIcon,
@@ -137,7 +138,7 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline'
 
-const props = defineProps({
+defineProps({
   isOpen: {
     type: Boolean,
     default: false
@@ -157,6 +158,7 @@ const adminMenuItems = [
   { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
   { labelKey: 'nav.doctors', to: '/doctors', icon: UserGroupIcon },
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.leads', to: '/leads', icon: InboxIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
   { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
@@ -169,6 +171,7 @@ const soloMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
   { labelKey: 'nav.patients', to: '/patients', icon: UsersIcon },
   { labelKey: 'nav.appointments', to: '/appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.myLeads', to: '/my-leads', icon: InboxIcon },
   { labelKey: 'nav.payments', to: '/payments', icon: CreditCardIcon },
   { labelKey: 'nav.services', to: '/services', icon: ClipboardDocumentListIcon },
   { labelKey: 'nav.inventory', to: '/inventory', icon: ArchiveBoxIcon },
@@ -183,6 +186,7 @@ const doctorMenuItems = [
   { labelKey: 'nav.dashboard', to: '/dashboard', icon: HomeIcon },
   { labelKey: 'nav.myPatients', to: '/my-patients', icon: UsersIcon },
   { labelKey: 'nav.myAppointments', to: '/my-appointments', icon: CalendarDaysIcon },
+  { labelKey: 'nav.myLeads', to: '/my-leads', icon: InboxIcon },
   { labelKey: 'nav.treatmentPlans', to: '/treatment-plans', icon: DocumentTextIcon },
   { labelKey: 'nav.doctorProfile', to: '/doctor/profile', icon: UserCircleIcon },
 ]

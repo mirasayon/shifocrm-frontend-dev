@@ -181,6 +181,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'update-status', 'open-payment', 'call'])
 
 const { t } = useI18n()
+
+const translateOrFallback = (key, fallback) => {
+  const translated = t(key)
+  if (!translated || translated === key) return fallback
+  return translated
+}
 const treatmentSectionOpen = ref(false)
 
 watch(
@@ -227,8 +233,8 @@ const statusBadgeClass = computed(() => {
 const paymentStatus = computed(() => {
   const status = props.appointment.status
   if (!status?.includes('completed')) return null
-  if (status === 'completed_paid') return t('appointments.paid') || 'To\'langan'
-  if (status === 'completed_debt') return t('appointments.debt') || 'Qarz'
+  if (status === 'completed_paid') return translateOrFallback('appointments.paid', 'To\'langan')
+  if (status === 'completed_debt') return translateOrFallback('appointments.debt', 'Qarz')
   return null
 })
 
@@ -257,13 +263,13 @@ const formatDate = (dateStr) => {
 
 const getStatusLabel = (status) => {
   const statusMap = {
-    'pending': 'Kutmoqda',
-    'arrived': 'Prishdi',
-    'in_progress': 'Qabulda',
-    'completed_paid': 'Tugadi',
-    'completed_debt': 'Qarzdor',
-    'cancelled': 'Bekor qilindi',
-    'no_show': 'Kelmadi'
+    'pending': translateOrFallback('appointments.statusPending', 'Kutmoqda'),
+    'arrived': translateOrFallback('appointments.statusArrived', 'Keldi'),
+    'in_progress': translateOrFallback('appointments.statusInProgress', 'Qabulda'),
+    'completed_paid': translateOrFallback('appointments.statusCompleted', 'Tugadi'),
+    'completed_debt': translateOrFallback('appointments.statusDebt', 'Qarzdor'),
+    'cancelled': translateOrFallback('appointments.statusCancelled', 'Bekor qilindi'),
+    'no_show': translateOrFallback('appointments.statusNoShow', 'Kelmadi')
   }
   return statusMap[status] || 'N/A'
 }

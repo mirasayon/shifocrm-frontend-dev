@@ -345,6 +345,7 @@
           @update:selected-date="selectedDate = $event"
           @update-status="handleStatusUpdate"
           @open-payment="handleSchedulePaymentAction"
+          @open-patient-detail="goToPatientDetail"
         />
       </div>
     </div>
@@ -374,6 +375,17 @@
                 <label class="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
                   {{ t('appointments.patient') }} <span class="text-red-500">*</span>
                 </label>
+                <div class="mb-2 flex items-center justify-between gap-2">
+                  <span class="text-xs text-gray-500">Mavjud bemorni tanlang yoki yangisini qo'shing</span>
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-lg border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 hover:bg-primary-100 transition-colors"
+                    @click="showQuickPatientForm = !showQuickPatientForm"
+                  >
+                    <PlusIcon class="h-3.5 w-3.5" />
+                    {{ showQuickPatientForm ? 'Yopish' : 'Bemor qo\'shish' }}
+                  </button>
+                </div>
                 <select
                   v-model="createForm.patient_id"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -387,6 +399,38 @@
                 <p v-if="availablePatients.length === 0 && !isAdmin" class="mt-1 text-xs text-amber-600">
                   {{ t('appointments.noPatientsAvailable') }}
                 </p>
+
+                <div v-if="showQuickPatientForm" class="mt-3 rounded-xl border border-primary-100 bg-primary-50/50 p-3 space-y-2.5">
+                  <p class="text-xs font-semibold text-primary-700">Tezkor bemor qo'shish</p>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <input
+                      v-model="quickPatientForm.full_name"
+                      type="text"
+                      placeholder="Bemor F.I.Sh"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                    <input
+                      v-model="quickPatientForm.phone"
+                      type="tel"
+                      placeholder="Telefon raqami"
+                      class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    />
+                  </div>
+                  <div v-if="quickPatientError" class="text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-2 py-1.5">
+                    {{ quickPatientError }}
+                  </div>
+                  <div class="flex justify-end">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
+                      :disabled="creatingPatient"
+                      @click="createPatientFromAppointmentModal"
+                    >
+                      <span v-if="creatingPatient">Qo'shilmoqda...</span>
+                      <span v-else>Saqlash va tanlash</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <!-- Doctor - Auto for doctor, required for admin -->
@@ -658,6 +702,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useDoctorsStore } from '@/stores/doctors'
@@ -677,10 +722,7 @@ import DoctorScheduleView from '@/components/appointments/DoctorScheduleView.vue
 import {
   PlusIcon,
   MagnifyingGlassIcon,
-  ArrowDownTrayIcon,
-  ArrowUpTrayIcon,
   XMarkIcon,
-  UserCircleIcon,
   EllipsisVerticalIcon,
   CheckCircleIcon,
   XCircleIcon,
@@ -693,6 +735,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const doctorsStore = useDoctorsStore()
 const patientsStore = usePatientsStore()
 const toast = useToast()
@@ -718,6 +761,13 @@ const bulkDoctorId = ref('')
 
 const showCreateModal = ref(false)
 const createError = ref('')
+const showQuickPatientForm = ref(false)
+const creatingPatient = ref(false)
+const quickPatientError = ref('')
+const quickPatientForm = ref({
+  full_name: '',
+  phone: ''
+})
 const createForm = ref({
   patient_id: '',
   doctor_id: '',
@@ -944,6 +994,8 @@ const loadVisits = async () => {
 
 const openCreateModal = () => {
   createError.value = ''
+  quickPatientError.value = ''
+  showQuickPatientForm.value = false
   // Doktor uchun avtomatik to'ldirish
   if (!isAdmin.value && doctorId.value) {
     createForm.value.doctor_id = String(doctorId.value)
@@ -957,8 +1009,69 @@ const openCreateModal = () => {
   showCreateModal.value = true
 }
 
+const resetQuickPatientForm = () => {
+  quickPatientError.value = ''
+  quickPatientForm.value = {
+    full_name: '',
+    phone: ''
+  }
+}
+
+const createPatientFromAppointmentModal = async () => {
+  quickPatientError.value = ''
+  const fullName = String(quickPatientForm.value.full_name || '').trim()
+  const phone = String(quickPatientForm.value.phone || '').trim()
+
+  if (!fullName) {
+    quickPatientError.value = 'Bemor ismini kiriting'
+    return
+  }
+  if (!phone) {
+    quickPatientError.value = 'Telefon raqamini kiriting'
+    return
+  }
+
+  creatingPatient.value = true
+  try {
+    let assignedDoctorId = null
+    let assignedDoctorName = null
+
+    if (isAdmin.value) {
+      if (createForm.value.doctor_id) {
+        assignedDoctorId = Number(createForm.value.doctor_id)
+        const selectedDoctor = doctors.value.find(d => Number(d.id) === assignedDoctorId)
+        assignedDoctorName = selectedDoctor?.full_name || null
+      }
+    } else if (doctorId.value) {
+      assignedDoctorId = Number(doctorId.value)
+      assignedDoctorName = currentDoctorName.value || null
+    }
+
+    const patient = await patientsStore.addPatient({
+      full_name: fullName,
+      phone,
+      doctor_id: assignedDoctorId,
+      doctor_name: assignedDoctorName,
+      status: 'waiting',
+      createFirstVisit: false
+    })
+
+    createForm.value.patient_id = patient.id
+    showQuickPatientForm.value = false
+    resetQuickPatientForm()
+    toast.success('Bemor qo\'shildi va tanlandi')
+  } catch (error) {
+    console.error('Failed to create patient from appointment modal:', error)
+    quickPatientError.value = 'Bemor qo\'shishda xatolik yuz berdi'
+  } finally {
+    creatingPatient.value = false
+  }
+}
+
 const closeCreateModal = () => {
   showCreateModal.value = false
+  showQuickPatientForm.value = false
+  resetQuickPatientForm()
   // Formani tozalash
   createForm.value = {
     patient_id: '',
@@ -1035,6 +1148,12 @@ const handleSchedulePaymentAction = (appointmentId, meta = null) => {
     return
   }
   openCompleteModal(visit)
+}
+
+const goToPatientDetail = (patientId) => {
+  const id = Number(patientId)
+  if (!Number.isFinite(id)) return
+  router.push({ name: 'patient-detail', params: { id } })
 }
 
 const closeCompleteModal = () => {
@@ -1361,78 +1480,6 @@ const clearSelected = () => {
 }
 
 const selectedVisits = () => visits.value.filter(v => selectedIds.value.includes(Number(v.id)))
-
-const exportAppointments = () => {
-  const data = filteredVisits.value.map(visit => ({
-    id: visit.id,
-    patient_id: visit.patient_id,
-    doctor_id: visit.doctor_id,
-    date: visit.date,
-    start_time: visit.start_time,
-    duration_minutes: visit.duration_minutes,
-    service_name: visit.service_name,
-    price: visit.price,
-    status: visit.status
-  }))
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'appointments.json'
-  a.click()
-  URL.revokeObjectURL(url)
-    toast.success(t('appointments.toastExportReady'))
-}
-
-const importAppointments = async (event) => {
-  const file = event.target.files?.[0]
-  if (!file) return
-  const text = await file.text()
-  const lines = text.split('\n').filter(Boolean)
-  if (lines.length <= 1) {
-    toast.error('CSV bo\'sh yoki noto\'g\'ri')
-    return
-  }
-  const [headerLine, ...rows] = lines
-  const headers = headerLine.split(',').map(h => h.trim())
-  const required = ['patient_id', 'doctor_id', 'date', 'start_time', 'duration_minutes']
-  if (!required.every(r => headers.includes(r))) {
-    toast.error('CSV ustunlari yetarli emas')
-    return
-  }
-  try {
-    for (const row of rows) {
-      const cells = row.split(',').map(c => c.trim())
-      const payload = headers.reduce((acc, key, index) => {
-        acc[key] = cells[index] || ''
-        return acc
-      }, {})
-      const endTime = buildEndTime(payload.start_time, Number(payload.duration_minutes))
-      await visitsApi.createVisit({
-        patient_id: payload.patient_id,
-        doctor_id: payload.doctor_id,
-        date: payload.date,
-        start_time: payload.start_time,
-        end_time: endTime,
-        duration_minutes: Number(payload.duration_minutes),
-        service_name: payload.service_name || null,
-        price: payload.price ? Number(payload.price) : null,
-        notes: payload.notes || null,
-        room: payload.room || null,
-        channel: payload.channel || null,
-        status: payload.status || 'pending',
-        updated_by: getActorLabel()
-      })
-    }
-    toast.success('Import yakunlandi')
-    await loadVisits()
-  } catch (error) {
-    console.error('Import failed:', error)
-    toast.error(t('appointments.errorImport'))
-  } finally {
-    event.target.value = ''
-  }
-}
 
 // Bugungi sanaga o'tish
 const setToday = () => {

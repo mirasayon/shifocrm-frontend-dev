@@ -95,9 +95,7 @@ export const createAppointment = async (data) => {
   }
 }
 
-/**
- * Qabulni yangilash
- */
+
 export const updateAppointment = async (id, data) => {
   try {
     const cid = await getCurrentClinicId()
@@ -125,9 +123,7 @@ export const updateAppointment = async (id, data) => {
   }
 }
 
-/**
- * Qabulni o'chirish
- */
+
 export const deleteAppointment = async (id) => {
   try {
     const cid = await getCurrentClinicId()
@@ -145,30 +141,22 @@ export const deleteAppointment = async (id) => {
   }
 }
 
-/**
- * Qabulning statusini yangilash
- */
+
 export const updateAppointmentStatus = async (id, status) => {
   return updateAppointment(id, { status })
 }
 
-/**
- * 24 soatlik eslatma flag-ini yangilash
- */
+
 export const mark24HourReminderSent = async (id) => {
   return updateAppointment(id, { reminder_24h_sent: true })
 }
 
-/**
- * 1 soatlik eslatma flag-ini yangilash
- */
+
 export const mark1HourReminderSent = async (id) => {
   return updateAppointment(id, { reminder_1h_sent: true })
 }
 
-/**
- * Bugungi qabullarni olish (doctor uchun)
- */
+
 export const getTodayAppointments = async (doctorId) => {
   try {
     const today = new Date()

@@ -70,6 +70,18 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresRole: 'admin' },
     },
     {
+      path: '/leads',
+      name: 'leads',
+      component: () => import('@/views/LeadsView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'admin' },
+    },
+    {
+      path: '/my-leads',
+      name: 'my-leads',
+      component: () => import('@/views/LeadsView.vue'),
+      meta: { requiresAuth: true, requiresRole: 'doctor' },
+    },
+    {
       path: '/inventory',
       name: 'inventory',
       component: () => import('@/views/InventoryView.vue'),
@@ -120,6 +132,12 @@ const router = createRouter({
       name: 'admin-solo-doctor-new',
       component: () => import('@/views/superadmin/AdminSoloDoctorFormView.vue'),
       meta: { requiresAuth: true, requiresRole: 'super_admin' },
+    },
+    {
+      path: '/d/:slug',
+      name: 'doctor-public-profile',
+      component: () => import('@/views/DoctorPublicProfileView.vue'),
+      meta: { requiresAuth: false }
     },
     {
       path: '/',

@@ -77,9 +77,9 @@
     </div>
 
     <!-- Schedule grid - Day view (Dentist+ style) -->
-    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-gray-100 overflow-hidden flex flex-col">
+    <div v-if="viewMode === 'day'" class="bg-white rounded-2xl shadow-card border border-slate-200 overflow-hidden flex flex-col">
       <!-- Toolbar -->
-      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
+      <div class="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-slate-50 to-blue-50/60 flex items-center justify-between flex-wrap gap-3">
         <!-- Doctor Filter with Multi-select -->
         <div class="flex items-center gap-2">
           <label class="text-sm font-medium text-gray-700">Shifokorlar:</label>
@@ -134,6 +134,15 @@
           </div>
         </div>
 
+        <div class="flex items-center flex-wrap gap-2 text-xs">
+          <span class="inline-flex items-center rounded-full bg-primary-50 px-2.5 py-1 font-semibold text-primary-700">
+            {{ dayAppointments.length }} ta qabul
+          </span>
+          <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700">
+            {{ freeSlotsCount }} ta bo'sh slot
+          </span>
+        </div>
+
         <!-- New Appointment Button -->
         <button
           @click="openNewAppointmentModal(null, null)"
@@ -146,8 +155,8 @@
       <!-- Schedule Canvas -->
       <div class="flex flex-1 overflow-hidden">
         <!-- Left: Time column (sticky) -->
-        <div class="bg-gray-50 border-r border-gray-200 flex-shrink-0 overflow-y-auto sticky left-0 z-40" :class="timeColumnWidth">
-          <div v-for="hour in hours" :key="hour.time" class="text-right pr-1 sm:pr-2 md:pr-3 py-0 text-xs font-medium text-gray-600 border-b border-gray-100" :style="{ height: slotHeightPx + 'px' }">
+        <div class="bg-gradient-to-b from-slate-50 to-slate-100 border-r border-gray-200 flex-shrink-0 overflow-y-auto sticky left-0 z-40" :class="timeColumnWidth">
+          <div v-for="hour in hours" :key="hour.time" class="text-right pr-1 sm:pr-2 md:pr-3 py-0 text-xs font-semibold text-slate-600 border-b border-slate-200/70" :style="{ height: slotHeightPx + 'px' }">
             <div class="pt-1">{{ hour.time }}</div>
           </div>
         </div>
@@ -161,7 +170,7 @@
             :style="{ width: doctorColumnWidth }"
           >
             <!-- Doctor header (sticky top) -->
-            <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3">
+            <div class="sticky top-0 z-30 bg-gradient-to-b from-primary-50 to-white border-b border-gray-200 px-2 sm:px-3 py-2 sm:py-3 shadow-sm">
               <div class="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2">{{ doctor.full_name }}</div>
               <div class="text-xs text-gray-500 line-clamp-1">{{ doctor.specialization || 'Shifokor' }}</div>
             </div>
@@ -172,7 +181,7 @@
               <div
                 v-for="hour in hours"
                 :key="`bg-${doctor.id}-${hour.time}`"
-                class="border-b border-gray-100 bg-gradient-to-b from-blue-50 via-white to-white hover:bg-blue-100 cursor-pointer transition-colors active:bg-blue-200"
+                class="border-b border-slate-100 bg-gradient-to-b from-blue-50/70 via-white to-white hover:from-blue-100 hover:to-blue-50 cursor-pointer transition-colors active:bg-blue-200"
                 :style="{ height: slotHeightPx + 'px' }"
                 @click="handleSlotClick(doctor.id, hour.time)"
               />
@@ -200,6 +209,7 @@
                     @update-status="handleStatusUpdate"
                     @open-payment="handleOpenPayment"
                     @open-patient-modal="handleOpenPatientModal"
+                    @open-patient-detail="handleOpenPatientDetail"
                   />
                 </div>
               </div>
@@ -351,7 +361,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:selectedDate', 'update-status', 'open-payment'])
+const emit = defineEmits(['update:selectedDate', 'update-status', 'open-payment', 'open-patient-detail'])
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -446,6 +456,11 @@ const patientByIdMap = computed(() => {
 // Tanlangan kun uchun appointmentlar (day view)
 const dayAppointments = computed(() => {
   return appointments.value.filter(appt => appt.date === currentDate.value)
+})
+
+const freeSlotsCount = computed(() => {
+  const totalSlots = displayedDoctors.value.length * hours.value.length
+  return Math.max(0, totalSlots - dayAppointments.value.length)
 })
 
 // Get appointments for specific doctor
@@ -566,7 +581,7 @@ const formatDateLabel = (dateStr) => {
 
 const getStatusBadgeClass = (status) => {
   const colors = getVisitStatusColors(status)
-  return `${colors.bg} ${colors.text}`
+  return `${colors.bgClass} ${colors.textClass}`
 }
 
 const getAppointmentsForDoctorAndDate = (doctorId, dateStr) => {
@@ -675,6 +690,12 @@ const handleStatusUpdate = async (newStatus) => {
 const handleOpenPatientModal = (appointment) => {
   selectedPatientAppointment.value = appointment
   patientModalOpen.value = true
+}
+
+const handleOpenPatientDetail = (patientId) => {
+  const id = Number(patientId)
+  if (!Number.isFinite(id)) return
+  emit('open-patient-detail', id)
 }
 
 // Telefon qo'ng'iroq

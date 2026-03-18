@@ -22,7 +22,7 @@
       </div>
 
       <!-- Desktop: tugmalar — To'lov qo'shish asosiy harakat -->
-      <div class="hidden md:flex items-center gap-2 shrink-0 ml-4">
+      <div class="hidden md:flex md:flex-wrap items-center justify-end gap-2 shrink-0 ml-4">
         <button
           v-if="canManagePayments"
           class="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 shadow-md transition-colors"
@@ -106,7 +106,62 @@
       </div>
     </div>
 
-    <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="md:hidden space-y-3">
+      <div
+        v-if="loading"
+        class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-slate-500 shadow-sm"
+      >
+        {{ t('patientPayments.loading') }}
+      </div>
+      <div
+        v-else-if="payments.length === 0"
+        class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-slate-500 shadow-sm"
+      >
+        {{ t('patientPayments.noPayments') }}
+      </div>
+      <div
+        v-for="entry in payments"
+        :key="`mobile-payment-${entry.id}`"
+        class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs text-slate-500">{{ formatDate(entry.paid_at) }}</p>
+            <p class="mt-1 text-sm font-semibold text-slate-900">#{{ entry.visit_id || '-' }}</p>
+          </div>
+          <span :class="['text-xs font-semibold px-2 py-1 rounded-full', getTypeClass(entry)]">
+            {{ getTypeDisplayLabel(entry) }}
+          </span>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.amount') }}</p>
+            <p class="font-semibold text-slate-900">{{ formatCurrency(entry.amount) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.method') }}</p>
+            <p class="font-medium text-slate-700">{{ entry.method || '-' }}</p>
+          </div>
+        </div>
+        <div class="mt-2 text-sm text-slate-700">
+          <p class="text-xs text-slate-500">{{ t('patientPayments.note') }}</p>
+          <p>{{ getDisplayNote(entry) }}</p>
+          <p v-if="getDiscountPercent(entry)" class="mt-1 text-xs font-semibold text-violet-700">
+            {{ getDiscountPercent(entry) }}%
+          </p>
+        </div>
+        <div v-if="canManagePayments" class="mt-3 flex items-center gap-4 text-sm">
+          <button class="font-medium text-primary-600" @click="openEditModal(entry)">
+            {{ t('patientPayments.edit') }}
+          </button>
+          <button class="font-medium text-rose-600" @click="confirmDelete(entry)">
+            {{ t('patientPayments.delete') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hidden md:block overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
       <table class="min-w-full divide-y divide-gray-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
@@ -138,7 +193,15 @@
               {{ formatCurrency(entry.amount) }}
             </td>
             <td class="px-4 py-3 text-slate-700">{{ entry.method || '-' }}</td>
-            <td class="px-4 py-3 text-slate-700">{{ entry.note || '-' }}</td>
+            <td class="px-4 py-3 text-slate-700">
+              <div>{{ getDisplayNote(entry) }}</div>
+              <span
+                v-if="getDiscountPercent(entry)"
+                class="mt-1 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700"
+              >
+                {{ getDiscountPercent(entry) }}%
+              </span>
+            </td>
             <td class="px-4 py-3 text-slate-700">
               <div v-if="canManagePayments" class="flex items-center gap-2">
                 <button class="text-primary-600 hover:text-primary-700 text-sm" @click="openEditModal(entry)">
@@ -155,7 +218,64 @@
       </table>
     </div>
 
-    <div class="overflow-x-auto rounded-xl border border-slate-200">
+    <div class="md:hidden space-y-3">
+      <div
+        v-if="servicesLoading"
+        class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500"
+      >
+        {{ t('patientPayments.loading') }}
+      </div>
+      <div
+        v-else-if="services.length === 0"
+        class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500"
+      >
+        {{ t('patientPayments.noServices') }}
+      </div>
+      <div
+        v-for="service in services"
+        :key="`mobile-service-${service.id}`"
+        class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.visitId') }}</p>
+            <p class="text-sm font-semibold text-slate-900">#{{ service.visit_id }}</p>
+          </div>
+          <div v-if="canManagePayments">
+            <button
+              type="button"
+              class="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
+              :disabled="serviceDeleting === service.id"
+              :title="t('patientPayments.delete')"
+              @click="confirmDeleteService(service)"
+            >
+              <TrashIcon class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <p class="mt-2 text-sm font-medium text-slate-800">{{ service.service_name }}</p>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.tooth') }}</p>
+            <p class="text-slate-700">{{ service.tooth_id ? `#${service.tooth_id}` : '-' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.price') }}</p>
+            <p class="font-semibold text-slate-900">{{ formatCurrency(service.price) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.doctor') }}</p>
+            <p class="text-slate-700">{{ service.performed_by || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">{{ t('patientPayments.date') }}</p>
+            <p class="text-slate-700">{{ formatDate(service.created_at) }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hidden md:block overflow-x-auto rounded-xl border border-slate-200">
       <table class="min-w-full divide-y divide-slate-200 text-sm">
         <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
           <tr>
@@ -247,11 +367,23 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1">
                     {{ isDiscountMode ? t('patientPayments.discountAmount') || 'Chegirma summasi' : t('patientPayments.amount') }}
                   </label>
-                  <input v-model="form.amount" type="number" :min="isDiscountMode ? 0 : 0" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" :placeholder="isDiscountMode ? (t('patientPayments.discountAmountPlaceholder') || 'Masalan: 50000') : t('patientPayments.amountPlaceholder')" />
+                  <input
+                    v-model="form.amount"
+                    type="number"
+                    :min="0"
+                    class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    :placeholder="isDiscountMode ? 'Ixtiyoriy (agar % kiritsangiz avtomatik hisoblanadi)' : t('patientPayments.amountPlaceholder')"
+                  />
+                  <p v-if="isDiscountMode" class="mt-1 text-xs text-slate-500">
+                    % kiritilsa summa avtomatik hisoblanadi.
+                  </p>
                 </div>
                 <div v-if="isDiscountMode">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Chegirma (%)</label>
                   <input v-model="form.discount_percent" type="number" min="0" max="100" step="0.01" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="Masalan: 10" />
+                  <p v-if="discountPreview.base > 0 && discountPreview.amount > 0" class="mt-1 text-xs font-medium text-violet-700">
+                    Avtomatik: {{ formatCurrency(discountPreview.amount) }} (bazaviy summa: {{ formatCurrency(discountPreview.base) }})
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('patientPayments.note') }}</label>
@@ -290,7 +422,7 @@ import { TrashIcon, TagIcon, BanknotesIcon, PrinterIcon } from '@heroicons/vue/2
 import { useAuthStore } from '@/stores/auth'
 import { useClinicStore } from '@/stores/clinic'
 import { createPayment, updatePayment, deletePayment, getPaymentsByPatientId, getPaymentsByVisitId } from '@/api/paymentsApi'
-import { getVisitServicesByPatientId, deleteVisitServiceById } from '@/api/visitServicesApi'
+import { getVisitServicesByPatientId, getVisitServicesByVisitId, deleteVisitServiceById } from '@/api/visitServicesApi'
 import { getVisitById, updateVisit, getVisitsByPatientId } from '@/api/visitsApi'
 import { listInventoryItems } from '@/api/inventoryApi'
 import { updatePatient } from '@/api/patientsApi'
@@ -353,7 +485,11 @@ const totalPayments = computed(() =>
 )
 
 const totalRefunds = computed(() =>
-  payments.value.reduce((sum, entry) => sum + (entry.payment_type === 'refund' ? Number(entry.amount) || 0 : 0), 0)
+  payments.value.reduce((sum, entry) => {
+    if (entry.payment_type !== 'refund') return sum
+    if (isDiscountEntry(entry)) return sum
+    return sum + (Number(entry.amount) || 0)
+  }, 0)
 )
 
 const netIncome = computed(() =>
@@ -495,6 +631,66 @@ const getTypeClass = (entry) => {
   }
   return 'text-emerald-600 font-medium'
 }
+
+const getDiscountPercent = (entry) => {
+  if (!entry?.note) return ''
+  const match = String(entry.note).match(/\[DISCOUNT_PERCENT:([\d.]+)\]/i)
+  return match?.[1] || ''
+}
+
+const getDisplayNote = (entry) => {
+  if (!entry?.note) return '-'
+  return normalizeNoteForPrint(entry.note)
+}
+
+const getVisitServicesTotal = (visitId) => {
+  const targetVisitId = Number(visitId)
+  if (!Number.isFinite(targetVisitId)) return 0
+  return services.value
+    .filter(item => Number(item.visit_id) === targetVisitId)
+    .reduce((sum, item) => {
+      const line = parsePrice(item.total_price ?? item.totalPrice ?? item.price)
+      return sum + line
+    }, 0)
+}
+
+const fetchVisitServicesTotal = async (visitId) => {
+  const targetVisitId = Number(visitId)
+  if (!Number.isFinite(targetVisitId)) return 0
+  const rows = await getVisitServicesByVisitId(targetVisitId)
+  if (!Array.isArray(rows) || rows.length === 0) return 0
+  return rows.reduce((sum, item) => {
+    const line = parsePrice(item.total_price ?? item.totalPrice ?? item.price)
+    return sum + line
+  }, 0)
+}
+
+const discountPreview = computed(() => {
+  if (!isDiscountMode.value) return { base: 0, amount: 0 }
+  const percent = Number(form.value.discount_percent)
+  const visitId = Number(form.value.visit_id)
+  if (!Number.isFinite(percent) || percent <= 0 || !Number.isFinite(visitId)) return { base: 0, amount: 0 }
+  const fromServices = getVisitServicesTotal(visitId)
+  const fromVisit = Number(visitPreview.value?.price) || 0
+  const base = fromServices > 0 ? fromServices : fromVisit
+  if (base <= 0) return { base: 0, amount: 0 }
+  return {
+    base,
+    amount: Math.round((base * percent) / 100)
+  }
+})
+
+watch(
+  () => [form.value.discount_percent, form.value.visit_id, isDiscountMode.value, discountPreview.value.amount],
+  () => {
+    if (!isDiscountMode.value) return
+    const percent = Number(form.value.discount_percent)
+    if (!Number.isFinite(percent) || percent <= 0) return
+    if (discountPreview.value.amount > 0) {
+      form.value.amount = String(discountPreview.value.amount)
+    }
+  }
+)
 
 const formatDate = (value) => {
   if (!value) return '-'
@@ -708,25 +904,42 @@ const savePayment = async () => {
     toast.error(t('patientPayments.errorVisitRequired'))
     return
   }
+
   let amount = Number(form.value.amount)
-  if (!Number.isFinite(amount) || amount === 0) {
-    toast.error(t('patientPayments.errorAmountRequired'))
-    return
-  }
+  const hasManualAmount = Number.isFinite(amount) && amount > 0
   let paymentType = form.value.payment_type
   let note = form.value.note || null
+
   // DB da amount faqat musbat (payments_amount_check); chegirani refund sifatida musbat summa bilan saqlaymiz
   if (paymentType === 'discount') {
     const percent = Number(form.value.discount_percent)
     const hasPercent = Number.isFinite(percent) && percent > 0
+
+    if (hasPercent && percent > 100) {
+      toast.error('Chegirma foizi 100 dan katta bo\'lmasligi kerak')
+      return
+    }
+
     if (hasPercent) {
-      const visit = visitPreview.value || await getVisitById(visitId)
-      const visitPrice = Number(visit?.price) || 0
-      if (visitPrice <= 0) {
-        toast.error('Foizli chegirma uchun tashrif narxi bo\'lishi kerak')
+      let baseAmount = getVisitServicesTotal(visitId)
+      if (baseAmount <= 0) {
+        try {
+          baseAmount = await fetchVisitServicesTotal(visitId)
+        } catch (error) {
+          console.warn('Visit services total fetch failed:', error)
+        }
+      }
+      if (baseAmount <= 0) {
+        const visit = visitPreview.value || await getVisitById(visitId)
+        baseAmount = Number(visit?.price) || 0
+      }
+
+      if (baseAmount <= 0) {
+        toast.error('Foizli chegirma uchun tashrifdagi xizmatlar summasi topilmadi')
         return
       }
-      amount = Math.round((visitPrice * percent) / 100)
+
+      amount = Math.round((baseAmount * percent) / 100)
       if (amount <= 0) {
         toast.error('Chegirma summasi 0 dan katta bo\'lishi kerak')
         return
@@ -734,11 +947,19 @@ const savePayment = async () => {
       note = note
         ? `${DISCOUNT_PERCENT_PREFIX}${percent}] ${note}`
         : `${DISCOUNT_PERCENT_PREFIX}${percent}]`
+    } else if (!hasManualAmount) {
+      toast.error('Chegirma uchun summa kiriting yoki foiz kiriting')
+      return
     }
+
     paymentType = 'refund'
     amount = Math.abs(amount)
     note = note ? `${DISCOUNT_NOTE_PREFIX} ${note}` : DISCOUNT_NOTE_PREFIX
+  } else if (!hasManualAmount) {
+    toast.error(t('patientPayments.errorAmountRequired'))
+    return
   }
+
   const payload = {
     visit_id: visitId,
     patient_id: Number(props.patientId),

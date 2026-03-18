@@ -31,6 +31,8 @@
     "patients": "Пациенты",
     "doctors": "Врачи",
     "appointments": "Приёмы",
+    "leads": "Лиды",
+    "myLeads": "Мои лиды",
     "payments": "Платежи",
     "services": "Услуги",
     "inventory": "Склад",
@@ -95,6 +97,9 @@
       "title": "Мой профиль",
       "subtitle": "Личные данные"
     }
+  },
+  "leads": {
+    "subtitle": "Заявки пациентов: имя, телефон, время визита"
   },
   "language": {
     "label": "Язык",

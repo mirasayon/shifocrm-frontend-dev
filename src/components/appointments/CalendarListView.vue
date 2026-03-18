@@ -1,6 +1,5 @@
 <template>
   <div class="calendar-list-container space-y-6">
-    <!-- Header: Date nav + view mode toggle -->
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-2">
         <button
@@ -233,7 +232,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:selectedDate', 'open-payment'])
+defineEmits(['update:selectedDate', 'open-payment'])
 
 const { t } = useI18n()
 const authStore = useAuthStore()
@@ -303,7 +302,6 @@ const weekDays = computed(() => {
 const monthCalendar = computed(() => {
   const date = new Date(currentDate.value + 'T00:00:00')
   const firstDay = new Date(date.getFullYear(), date.getMonth(), 1)
-  const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0)
 
   const startDate = new Date(firstDay)
   startDate.setDate(startDate.getDate() - firstDay.getDay())
@@ -378,7 +376,7 @@ const getStatusLabel = (status) => {
 
 const getStatusBadgeClass = (status) => {
   const colors = getVisitStatusColors(status)
-  return `${colors.bg} ${colors.text}`
+  return `${colors.bgClass} ${colors.textClass}`
 }
 
 const getAppointmentsForDate = (dateStr) => {

@@ -35,6 +35,8 @@
     "services": "Xizmatlar",
     "inventory": "Ombor",
     "reports": "Hisobotlar",
+    "leads": "Leadlar",
+    "myLeads": "Mening Leadlarim",
     "settings": "Sozlamalar",
     "myPatients": "Mening Bemorlarim",
     "myAppointments": "Mening Uchrashuvlarim",
@@ -95,6 +97,9 @@
       "title": "Mening Profilim",
       "subtitle": "Shaxsiy ma'lumotlar"
     }
+  },
+  "leads": {
+    "subtitle": "Bemor so'rovlari: ism, telefon, kelish vaqti"
   },
   "language": {
     "label": "Til",

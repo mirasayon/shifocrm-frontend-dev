@@ -206,19 +206,15 @@ export const deletePatient = async (id) => {
   }
 }
 
-// Initialization (Supabase uchun kerak emas, lekin backward compatibility uchun)
 export const initPatients = async () => {
-  // No-op for Supabase
   return true
 }
 
-// Refresh (backward compatibility)
 export const refreshFromServer = async () => {
   return await listPatients()
 }
 
-// Export to JSON file
-export const downloadDbJson = async () => {
+  export const downloadDbJson = async () => {
   const patients = await listPatients()
   const data = { patients }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })

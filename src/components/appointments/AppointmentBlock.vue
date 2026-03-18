@@ -5,8 +5,14 @@
     :title="`${appointment.patient_name} - ${localStartTime} to ${localEndTime}`"
     @click="handleBlockClick"
   >
-    <!-- Bemor ismi (mobile: abbreviated, desktop: full) -->
-    <div class="font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1 text-xs sm:text-sm">{{ appointment.patient_name || 'N/A' }}</div>
+    <!-- Bemor ismi (click -> patient detail) -->
+    <button
+      type="button"
+      class="font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1 text-xs sm:text-sm text-left hover:text-primary-700 hover:underline"
+      @click.stop="handleOpenPatientDetail"
+    >
+      {{ appointment.patient_name || 'N/A' }}
+    </button>
 
     <!-- Vaqt (responsive) -->
     <div class="text-gray-600 mt-0.5 flex items-center gap-0.5 sm:gap-1 text-xs">
@@ -31,7 +37,7 @@
     </div>
 
     <!-- Quick actions (show on hover, hidden on small mobile) -->
-    <div class="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 flex gap-0.5 sm:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div class="absolute top-0.5 right-0.5 sm:top-1 sm:right-1 flex gap-0.5 sm:gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
       <button
         v-if="canStartAppointment"
         @click.stop="handleStartAppointment"
@@ -86,9 +92,15 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update-status', 'open-payment', 'open-patient-modal'])
+const emit = defineEmits(['update-status', 'open-payment', 'open-patient-modal', 'open-patient-detail'])
 
 const { t } = useI18n()
+
+const translateOrFallback = (key, fallback) => {
+  const translated = t(key)
+  if (!translated || translated === key) return fallback
+  return translated
+}
 
 // Extract local time from appointment (handles UTC conversion)
 const localStartTime = computed(() => {
@@ -180,8 +192,8 @@ const statusBadgeClass = computed(() => {
 const paymentStatus = computed(() => {
   const status = props.appointment.status
   if (!status?.includes('completed')) return null
-  if (status === 'completed_paid') return t('appointments.paid') || 'To\'langan'
-  if (status === 'completed_debt') return t('appointments.debt') || 'Qarz'
+  if (status === 'completed_paid') return translateOrFallback('appointments.paid', 'To\'langan')
+  if (status === 'completed_debt') return translateOrFallback('appointments.debt', 'Qarz')
   return null
 })
 
@@ -204,13 +216,13 @@ const canCompleteAppointment = computed(() => {
 // Utilities
 const getStatusLabel = (status) => {
   const statusMap = {
-    'pending': t('appointments.statusPending') || 'Kutmoqda',
-    'arrived': t('appointments.statusArrived') || 'Prishdi',
-    'in_progress': t('appointments.statusInProgress') || 'Qabulda',
-    'completed_paid': t('appointments.statusCompleted') || 'Tugadi',
-    'completed_debt': t('appointments.statusDebt') || 'Qarzdor',
-    'cancelled': t('appointments.statusCancelled') || 'Bekor qilindi',
-    'no_show': t('appointments.statusNoShow') || 'Kelmadi'
+    'pending': translateOrFallback('appointments.statusPending', 'Kutmoqda'),
+    'arrived': translateOrFallback('appointments.statusArrived', 'Keldi'),
+    'in_progress': translateOrFallback('appointments.statusInProgress', 'Qabulda'),
+    'completed_paid': translateOrFallback('appointments.statusCompleted', 'Tugadi'),
+    'completed_debt': translateOrFallback('appointments.statusDebt', 'Qarzdor'),
+    'cancelled': translateOrFallback('appointments.statusCancelled', 'Bekor qilindi'),
+    'no_show': translateOrFallback('appointments.statusNoShow', 'Kelmadi')
   }
   return statusMap[status] || 'N/A'
 }
@@ -237,6 +249,12 @@ const handleCompleteAppointment = () => {
 
 const handlePaymentModal = () => {
   emit('open-payment', props.appointment.id)
+}
+
+const handleOpenPatientDetail = () => {
+  const patientId = Number(props.appointment?.patient_id)
+  if (!Number.isFinite(patientId)) return
+  emit('open-patient-detail', patientId)
 }
 </script>
 
